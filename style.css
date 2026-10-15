@@ -1,0 +1,8 @@
+/* AI-assisted basic page styling; Week 1 HTML/CSS. */
+body {
+  margin: 0;
+  background: #263f47;
+}
+canvas {
+  display: block;
+}
