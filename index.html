@@ -1,18 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Water Lilies — Week 1</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- AI-assisted project scaffold. See README.md for scope and sources. -->
-  <!-- Load the library first, mechanic functions next, and the main sketch last. -->
-  <script src="libraries/p5.min.js"></script>
-  <script src="perlin-lilies.js"></script>
-  <script src="audio-mechanic.js"></script>
-  <script src="time-mechanic.js"></script>
-  <script src="input-controls.js"></script>
-  <script src="sketch.js"></script>
-</body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Water Lily Pond</title>
+<style>
+body{margin:0;background:#344e58;font-family:system-ui,"Microsoft YaHei",sans-serif;color:#fff}canvas{display:block}header{position:fixed;top:22px;left:24px;right:24px;pointer-events:none}h1{font-size:23px;margin:0 0 7px}p{font-size:13px;margin:0;opacity:.85}nav{position:fixed;bottom:24px;left:20px;right:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}button{border:1px solid #ffffff55;background:#183b43d9;color:white;padding:11px 17px;border-radius:24px;cursor:pointer;font:inherit;font-size:14px}button[aria-pressed=true]{background:#f1e4c9;color:#254349}#status{position:fixed;bottom:86px;text-align:center;width:100%;font-size:13px;pointer-events:none}
+</style>
+<!-- Keep the heading simple. -->
+<header><h1>Water Lily Pond</h1></header>
+<div id="status"></div>
+<!-- These buttons preview the seasons; the timer also runs automatically. -->
+<nav><button id="spring" onclick="chooseSeason(0)">Spring</button><button id="summer" onclick="chooseSeason(1)">Summer</button><button id="autumn" onclick="chooseSeason(2)">Autumn</button><button id="winter" onclick="chooseSeason(3)">Winter</button><button id="auto" onclick="toggleAuto()">Auto: On</button></nav>
+<script src="libraries/p5.min.js"></script>
+<script src="perlin-lilies.js"></script>
+<script src="audio-mechanic.js"></script>
+<script src="time-mechanic.js"></script>
+<script src="input-controls.js"></script>
+<script src="sketch.js"></script>
 </html>

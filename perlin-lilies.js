@@ -167,16 +167,17 @@ function drawPerlinMechanic(state) {
 }
 
 function drawLily(lily, state) {
-  let size = lily.size * state.unit;
+  let size = lily.size * state.unit * leafScale;
   push();
   translate(lily.x * state.width, lily.y * state.height);
   rotate(lily.angle);
   noStroke();
   fill(17, 40, 43, 85);
   ellipse(size * 0.06, size * 0.12, size * 1.13, size * 0.79);
-  fill(pondPalette[3][0] + lily.tint, pondPalette[3][1] + lily.tint, pondPalette[3][2] + lily.tint);
+  // Read the leaf colour from the time module; keep each leaf's colour variation.
+  fill(leafR + lily.tint, leafG + lily.tint, leafB + lily.tint);
   ellipse(0, 0, size, size * 0.72);
-  fill(pondPalette[3][0] + 30, pondPalette[3][1] + 20, pondPalette[3][2] + 20, 90);
+  fill(leafR + 30, leafG + 20, leafB + 20, 90);
   ellipse(-size * 0.08, -size * 0.08, size * 0.75, size * 0.48);
   // A simple dark triangle suggests the notch of a lily pad.
   fill(pondPalette[0][0], pondPalette[0][1], pondPalette[0][2]);
@@ -185,8 +186,9 @@ function drawLily(lily, state) {
   strokeWeight(1);
   line(-size * 0.35, -size * 0.05, 0, 0);
   noStroke();
-  if (lily.flower) {
-    drawLilyFlower(size);
+  // The time module controls flower size. Skip flowers when they become tiny.
+  if (lily.flower && flowerScale > 0.02) {
+    drawLilyFlower(lily.size * state.unit * flowerScale);
   }
   pop();
 }

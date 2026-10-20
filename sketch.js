@@ -8,6 +8,7 @@ let pond = {
   ripples: []
 };
 
+// Create the canvas and initialise each module once.
 function setup() {
   createCanvas(windowWidth, windowHeight);
   angleMode(DEGREES);
@@ -16,8 +17,10 @@ function setup() {
   setupAudioMechanic(pond);
   setupTimeMechanic(pond);
   setupInputMechanic(pond);
+  updateLabels();
 }
 
+// Update the modules, then draw from the water to the falling objects.
 function draw() {
   pond.frame = frameCount;
 
@@ -29,13 +32,14 @@ function draw() {
 
   // Back to front: water, reserved fish/time layer, lilies, reserved overlays.
   drawPondWater(pond);
-  drawTimeMechanic(pond);
   drawPerlinMechanic(pond);
   drawAudioMechanic(pond);
   drawInputMechanic(pond);
-  drawWeekOneLabel(pond);
+  drawTimeMechanic(pond);
+  // The HTML page displays the title and current season.
 }
 
+// Keep the shared dimensions in sync with the canvas.
 function updatePondSize() {
   pond.width = width;
   pond.height = height;
@@ -48,6 +52,7 @@ function windowResized() {
   updatePondSize();
 }
 
+// Forward clicks to the existing input and audio modules.
 function mousePressed() {
   if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     handleInputPressed(pond, mouseX / width, mouseY / height);
@@ -59,15 +64,3 @@ function keyPressed() {
   handleInputKey(pond, key);
 }
 
-function drawWeekOneLabel(state) {
-  push();
-  noStroke();
-  fill(235, 233, 209);
-  textSize(constrain(state.unit * 0.025, 12, 20));
-  text("WATER LILIES / WEEK 01", 20, 32);
-  textSize(constrain(state.unit * 0.016, 9, 12));
-  text("Noise + randomness study", 20, 52);
-  text("Observe the slow drift.", 20, state.height - 36);
-  text("Other mechanics: not yet implemented", 20, state.height - 18);
-  pop();
-}
