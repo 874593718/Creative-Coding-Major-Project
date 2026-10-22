@@ -1,0 +1,27 @@
+WATER LILY POND
+
+Open index.html in the extracted project folder. All runtime resources are local.
+The automatic cycle changes season every 600 frames (about 10 seconds at 60 fps).
+The buttons allow a quick preview. Auto pauses or resumes the season timer.
+
+MAIN PARTS
+sketch.js: initialisation, per-frame updates, drawing order and window resizing.
+time-mechanic.js: the season timer, target lily sizes and colours, falling objects,
+and simple drawing functions for petals and maple leaves.
+perlin-lilies.js: the original pond, random layout and Perlin-noise movement.
+Only drawLily() was adapted to read seasonal sizes and colours.
+audio-mechanic.js and input-controls.js remain empty integration hooks.
+
+COURSE MATERIAL CHECK
+Week 2: RGB colours, HTML IDs and document.getElementById().
+Weeks 3-4: functions, objects, arrays, conditions and loops.
+Weeks 6 and 8: p5 drawing, random/noise, transforms and window resizing.
+Week 11: lerp() easing and frame-based animation.
+The added petal and leaf drawings use ellipses, triangles and lines, rather than
+Bezier curves or custom vertex shapes. No new classes or extra libraries were added.
+These supplied tutorials support the techniques listed here; they are not a formal
+assessment whitelist. The original teammate's noise and layout code was preserved.
+
+The seasonal growth and winter retreat are simplified artistic representations.
+This version was made with AI assistance and should be reviewed and understood.
+The copied README.md and docs describe the original Week 1 project, not these additions.

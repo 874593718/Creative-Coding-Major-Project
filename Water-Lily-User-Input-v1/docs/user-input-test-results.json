@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-23",
+  "browser": "Chromium",
+  "viewports": [
+    "1200x850",
+    "390x844"
+  ],
+  "checks": [
+    "spring hover, independent bloom, close and mid-animation reverse",
+    "B/b and R/r controls",
+    "summer drag, ripple trail, persistent base position, hover recovery, no accidental bloom click",
+    "blank-water ripple, expiry, 12-ripple cap and reset",
+    "autumn real-leaf gathering, following, release to persistent surface leaves",
+    "winter snow gathering, drag trace, release and trace expiry",
+    "season-change cancellation; mobile resize preserves states and input coordinates",
+    "original automatic season cycle still runs"
+  ],
+  "errors": []
+}
