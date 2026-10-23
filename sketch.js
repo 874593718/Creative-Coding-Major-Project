@@ -17,6 +17,7 @@ function setup() {
   setupAudioMechanic(pond);
   setupTimeMechanic(pond);
   setupInputMechanic(pond);
+  setupPondFish();
   updateLabels();
 }
 
@@ -29,9 +30,11 @@ function draw() {
   updateAudioMechanic(pond);
   updateTimeMechanic(pond);
   updatePerlinMechanic(pond);
+  updatePondFish(pond);
 
   // Back to front: water, reserved fish/time layer, lilies, reserved overlays.
   drawPondWater(pond);
+  drawPondFish(pond);
   drawPerlinMechanic(pond);
   drawAudioMechanic(pond);
   drawInputMechanic(pond);

@@ -113,7 +113,7 @@ function updateInputMechanic(state) {
   }
   let liveRipples=[];
   for(let i=0;i<state.ripples.length;i++) {
-    let r=state.ripples[i]; r.age+=1; r.radius+=0.004; r.strength=1-r.age/90;
+    let r=state.ripples[i]; r.age+=1; r.radius+=getPerlinRippleSpeed(r); r.strength=1-r.age/90;
     if(r.age<90) liveRipples.push(r);
   }
   state.ripples=liveRipples;
@@ -162,7 +162,7 @@ function addInputRipple(state,x,y) {
     for(let i=0;i<state.ripples.length-1;i++) state.ripples[i]=state.ripples[i+1];
     state.ripples.pop();
   }
-  state.ripples.push({x:x,y:y,radius:0,strength:1,age:0});
+  state.ripples.push(createPerlinRipple(x,y));
 }
 
 function gatherInputParticles(state) {
