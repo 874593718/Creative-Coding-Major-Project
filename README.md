@@ -1,5 +1,15 @@
 # Water Lilies / 睡莲互动池塘
 
+## 本地整合更新（2026-10-23）
+
+已保留组员 `user-input` 分支的提交历史，并将其独立预览版中的接入补丁应用到根目录项目。直接打开根目录 `index.html` 即可运行四季 + 用户输入版本，音频仍为空接口。以下第一周说明保留为阶段记录；当前交互以本节和[组员操作指南](Water-Lily-User-Input-v1/docs/user-input-guide-zh.md)为准。
+
+- 春季：点击花朵开合；夏季：拖动睡莲；空白水面点击产生波纹。
+- 秋季：按住收集附近落叶，松开留下叶簇；冬季：聚拢雪花、拖动留下雪迹。
+- B：展开全部花朵；R：重置用户操作。底部按钮切换季节或暂停自动变化。
+- 整合仅接入组员已有逻辑，修改根目录 input-controls.js、sketch.js、perlin-lilies.js、time-mechanic.js、index.html，保留原有作者及 AI 标注。独立预览文件夹保持不变。
+- 本地浏览器验证通过：加载、B/R、夏季拖动与波纹、秋季聚叶、冬季雪迹、季节按钮、窗口缩放；无页面 JavaScript 异常。尚未全面验证触屏及所有极端交互。
+
 IDEA9103 Creative Coding Major Project — 第一次提交工作版。
 
 ## 概念与当前阶段

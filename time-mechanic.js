@@ -59,6 +59,8 @@ function updateTimeMechanic(state) {
     p.y=p.y+speed/state.height;
     if(season===1) p.x=p.x-2/state.width;
     else p.x=p.x+0.3/state.width;
+    // USER INPUT adapter: gathering/release is applied inside this writer.
+    applyInputToParticle(state, p);
     // Reuse each object when it leaves the canvas.
     if(p.y>1.02) {p.y=-0.02;p.x=random(1);}
     if(p.x>1.02) p.x=-0.02;

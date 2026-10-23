@@ -141,9 +141,14 @@ function updatePerlinMechanic(state) {
     // Use the shorter canvas dimension so movement keeps the same proportions.
     let offsetX = map(noise(lily.seedX + noiseTime), 0, 1, -driftAmount, driftAmount);
     let offsetY = map(noise(lily.seedY + noiseTime), 0, 1, -driftAmount, driftAmount);
-    lily.x = lily.baseX + offsetX * state.unit / state.width;
-    lily.y = lily.baseY + offsetY * state.unit / state.height;
-    // Future ripple offsets belong here; do not overwrite positions elsewhere.
+    // USER INPUT adapter: combine offsets in this single position writer.
+    let inputOffset = getInputLilyOffset(lily, state);
+    lily.x = lily.baseX + (offsetX + inputOffset.x) * state.unit / state.width;
+    lily.y = lily.baseY + (offsetY + inputOffset.y) * state.unit / state.height;
+    if (inputLilyIsDragged(lily)) {
+      lily.x = lily.baseX;
+      lily.y = lily.baseY;
+    }
   }
 }
 
@@ -188,7 +193,8 @@ function drawLily(lily, state) {
   noStroke();
   // The time module controls flower size. Skip flowers when they become tiny.
   if (lily.flower && flowerScale > 0.02) {
-    drawLilyFlower(lily.size * state.unit * flowerScale);
+    // USER INPUT adapter: seasonal size plus an independent bloom state.
+    drawInputLilyFlower(lily, lily.size * state.unit * flowerScale);
   }
   pop();
 }

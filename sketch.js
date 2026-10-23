@@ -64,3 +64,8 @@ function keyPressed() {
   handleInputKey(pond, key);
 }
 
+// USER INPUT adapter: mouseReleased() is introduced in Week 6 Lecture.
+function mouseReleased() {
+  handleInputReleased(pond, mouseX / width, mouseY / height);
+}
+
