@@ -1,5 +1,13 @@
 # Water Lilies / 睡莲互动池塘
 
+## Audio mechanic — first local commit (2026-10-27)
+
+This is an IDEA9103 student assignment for non-commercial classroom collaboration. The audio module loads a 100-second recording, provides a Play/Pause button, and uses the song's level to change the existing 2D fish's speed (1–6×) and size (1–2.2×). It captures the fish's random base values once; its Perlin direction, drawing, and ripple response remain in the teammate's original `perlin-water-life.js`. The original seasonal timer remains independent in this first commit. Audio and seasons are connected in the next commit.
+
+The sound is an OBS recording supplied by the student, edited from 7.2–107.2 seconds of the recording with short fades. Source: Robert Schumann, *Kinderszenen* Op. 15, performed by Anna Vinnitskaya, SWR Classic / ARD Klassik ([source video](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)). Attribution and non-commercial use do not establish a licence to redistribute the performance; keep the repository private and obtain permission or replace the recording before public release.
+
+Student direction: music playback and a clear fish response. ChatGPT/Codex assisted with audio editing, the grouped `audio-mechanic.js` implementation, comments, and documentation. `loadSound`, `p5.Amplitude` and `getLevel` follow Week 10 Tutorial Part 1. `map`, `constrain` and `lerp` are course p5.js techniques. `pause()` and `loop()` are official p5.sound methods used as supplements. The bundled `p5.sound.min.js` is copied from the student's classroom pilot. The original team history remains below.
+
 ## 哲明第二周更新（2026-10-23）
 
 鱼的水波响应已接入：按波纹的椭圆比例检查波前是否靠近鱼，每个水波只触发一次。random 决定转向强度、35–60 帧的持续时间和短暂加速；noise 连续调节转弯速率，响应随剩余时间衰减，结束后恢复基础游速。转向侧根据鱼朝向和扰动来源计算，正好同轴时随机选择。使用 dist、abs、sin/cos、random、noise、map、max、普通对象与循环，均在第 3/4、7、8、11 周范围内。未新增超纲 API。
