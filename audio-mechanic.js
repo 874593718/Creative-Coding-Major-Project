@@ -16,6 +16,7 @@ let audioMaxSpeed = 6;
 let audioMaxSize = 2.2;
 let audioFishBaseSpeed;
 let audioFishBaseSize;
+let audioSeekFrames = 0;
 
 // 2. LOAD — p5 calls this once before setup(). Keep audio loading here.
 function preload() {
@@ -33,21 +34,47 @@ function setupAudioMechanic(state) {
 
 // 4. PLAY / PAUSE — the original sketch also calls this on pond clicks.
 // That existing call passes state; ignore it so only the button plays music.
+// p5.sound pause() preserves playback position, unlike stop().
 function handleAudioPressed(state) {
   if (state) return;
   if (audioSong.isPlaying()) {
     audioSong.pause();
     audioButton.innerHTML = 'Play music';
   } else {
-    audioSong.loop();
-    audioButton.innerHTML = 'Pause music';
+    // Seasons can keep moving while paused. Match their current progress.
+    let start = seasonStartTimes[season];
+    let end = seasonStartTimes[season + 1];
+    let progress = constrain(seasonFrames / 600, 0, 0.99);
+    seekAudioTo(start + (end - start) * progress);
+    seasonSeekFrames = 12;
   }
 }
 
-// 5. ANALYSE AND MAP — output new speed/size values for the existing fish.
+// 5. SEASON SEEK — move music and picture to the same song passage.
+// jump() and currentTime() are official p5.sound supplements.
+function seekAudioTo(seconds) {
+  if (!audioSong.isPlaying()) audioSong.loop();
+  audioSong.jump(seconds);
+  audioSeekFrames = 12;
+  audioButton.innerHTML = 'Pause music';
+}
+
+// 6. ANALYSE AND MAP — output song time plus fish speed/size.
 // Capture its random base values once; never multiply last frame's values.
 // Perlin direction, drawing and ripple response remain in the teammate file.
 function updateAudioMechanic(state) {
+  state.audioTime = audioSong.currentTime();
+  state.audioPlaying = audioSong.isPlaying();
+  // Auto Off freezes the season; repeat its passage of the same song.
+  if (audioSeekFrames > 0) audioSeekFrames--;
+  else if (state.audioPlaying && !autoChange) {
+    let start = seasonStartTimes[season];
+    let end = seasonStartTimes[season + 1];
+    if (state.audioTime < start || state.audioTime >= end) {
+      seekAudioTo(start);
+      state.audioTime = start;
+    }
+  }
   if (audioFishBaseSpeed === undefined && pondFish) {
     audioFishBaseSpeed = pondFish.speed;
     audioFishBaseSize = pondFish.size;

@@ -3,6 +3,11 @@ let season = 0;
 let particles = [];
 let autoChange = true;
 let seasonFrames = 0;
+let seasonSnap = false;
+let seasonSeekFrames = 0;
+// Seconds in the edited 100-second song. The first two changes meet its
+// natural quiet gaps; winter begins in the quieter final passage.
+let seasonStartTimes = [0, 28, 57, 80, 100];
 // Current leaf size, flower size and leaf colour.
 let leafScale = 0.45;
 let flowerScale = 0;
@@ -16,14 +21,39 @@ function setupTimeMechanic(state) {
   for(let i=0;i<90;i++) {
     particles.push({x:random(1),y:random(1)});
   }
+  let buttonIds = ['spring','summer','autumn','winter'];
+  for(let i=0;i<buttonIds.length;i++) {
+    document.getElementById(buttonIds[i]).disabled = false;
+  }
 }
 function updateTimeMechanic(state) {
-  // Count 600 frames per season, then return to spring after winter.
-  if(autoChange) {
+  // SEASON/AUDIO ADAPTER (AI-assisted): restore the team's 600-frame Auto
+  // cycle when music is paused. During playback, the real song time leads.
+  if(state.audioPlaying) {
+    let musicSeason = 0;
+    if(state.audioTime >= seasonStartTimes[3]) musicSeason = 3;
+    else if(state.audioTime >= seasonStartTimes[2]) musicSeason = 2;
+    else if(state.audioTime >= seasonStartTimes[1]) musicSeason = 1;
+    // jump() may report its previous position for a few frames.
+    if(seasonSeekFrames > 0) {
+      if(state.audioTime >= seasonStartTimes[season] &&
+         state.audioTime < seasonStartTimes[season+1]) seasonSeekFrames = 0;
+      else seasonSeekFrames--;
+    } else if(autoChange && musicSeason !== season) {
+      season = musicSeason;
+      updateLabels();
+    }
+    if(state.audioTime >= seasonStartTimes[season] &&
+       state.audioTime < seasonStartTimes[season+1]) {
+      // Store the current point in this season for paused Auto playback.
+      seasonFrames = map(state.audioTime, seasonStartTimes[season],
+                         seasonStartTimes[season+1], 0, 600);
+    }
+  } else if(autoChange) {
+    // Original team behavior: 600 frames per season without music.
     seasonFrames++;
-    if(seasonFrames>=600) {
-      season = season + 1;
-      if(season > 3) season = 0;
+    if(seasonFrames >= 600) {
+      season = (season + 1) % 4;
       seasonFrames = 0;
       updateLabels();
     }
@@ -45,12 +75,19 @@ function updateTimeMechanic(state) {
     targetLeaf=0; targetFlower=0;
     targetR=100; targetG=89; targetB=65;
   }
-  // Move a little closer to the target each frame (Week 11 easing).
-  leafScale=lerp(leafScale,targetLeaf,0.015);
-  flowerScale=lerp(flowerScale,targetFlower,0.015);
-  leafR=lerp(leafR,targetR,0.015);
-  leafG=lerp(leafG,targetG,0.015);
-  leafB=lerp(leafB,targetB,0.015);
+  // A button applies its season at once; natural song changes ease across.
+  if(seasonSnap) {
+    leafScale=targetLeaf; flowerScale=targetFlower;
+    leafR=targetR; leafG=targetG; leafB=targetB;
+    seasonSnap=false;
+  } else {
+    // Move a little closer to the target each frame (Week 11 easing).
+    leafScale=lerp(leafScale,targetLeaf,0.035);
+    flowerScale=lerp(flowerScale,targetFlower,0.035);
+    leafR=lerp(leafR,targetR,0.035);
+    leafG=lerp(leafG,targetG,0.035);
+    leafB=lerp(leafB,targetB,0.035);
+  }
   // Rain falls faster than petals, leaves and snow.
   let speed=1;
   if(season===1) speed=7;
@@ -141,25 +178,29 @@ function drawMapleLeaf(x,y,angle) {
   line(0,3,7,0);
   pop();
 }
-// Preview a season and restart its frame counter.
+// AUDIO/TIME ADAPTER (AI-assisted): the buttons seek into the same song.
+// The time mechanic still reads the song position each frame after this.
 function chooseSeason(next) {
-  season=next;
-  seasonFrames=0;
+  seekAudioTo(seasonStartTimes[next]);
+  season = next;
+  seasonFrames = 0;
+  seasonSnap = true;
+  seasonSeekFrames = 12;
   updateLabels();
 }
-// Pause or resume the automatic season cycle.
+
+// Restore the team's independent Auto switch.
 function toggleAuto() {
-  autoChange=!autoChange;
-  seasonFrames=0;
+  autoChange = !autoChange;
   updateLabels();
 }
-// Update the season name and the preview buttons using their HTML IDs.
+
+// Show the season selected by the song playhead and mark its button.
 function updateLabels() {
   document.getElementById('status').textContent=seasonNames[season];
   let buttonIds = ['spring','summer','autumn','winter'];
-  for(let i=0;i<4;i++) {
+  for(let i=0;i<buttonIds.length;i++) {
     document.getElementById(buttonIds[i]).setAttribute('aria-pressed',i===season);
   }
-  if(autoChange) document.getElementById('auto').textContent='Auto: On';
-  else document.getElementById('auto').textContent='Auto: Off';
+  document.getElementById('auto').textContent = autoChange ? 'Auto: On' : 'Auto: Off';
 }
