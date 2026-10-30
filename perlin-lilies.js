@@ -10,7 +10,9 @@ const driftAmount = 0.008;
 let waterMarks = [];
 let pondPalette;
 let paletteIndex = 0;
-// RGB triplets: water, reflected sky, foliage, pad, flower.
+// Each row is one palette; each group of three numbers is red, green and blue.
+// The five colours are water, sky reflection, foliage reflection, pad and flower.
+// The pad colour is saved here, but the time module currently controls leaf colour.
 // AI-assisted original palette choices, inspired by the group's Monet concept.
 const pondPalettes = [
   [[66, 89, 126], [177, 183, 205], [65, 101, 84], [103, 141, 91], [244, 204, 218]],
@@ -23,7 +25,8 @@ function setupPerlinMechanic(state) {
   lilies = [];
   noiseTime = 0;
   paletteIndex = Math.floor(random(0, pondPalettes.length));
-  // Pick one base palette, then vary each RGB channel slightly.
+  // Pick one base palette, then vary each RGB channel by up to 10.
+  // constrain keeps the colour values between 0 and 255.
   // Save the result once so the colours stay steady while the pond animates.
   pondPalette = [];
   for (let colour = 0; colour < pondPalettes[paletteIndex].length; colour++) {
@@ -73,6 +76,8 @@ function setupPerlinMechanic(state) {
   lilyCount = lilies.length;
 }
 
+// Save the original position separately from the moving position.
+// Different noise starting points give each pad its own movement.
 function addLily(x, y, size) {
   lilies.push({
     baseX: x, baseY: y, x: x, y: y, size: size,
@@ -82,6 +87,7 @@ function addLily(x, y, size) {
   });
 }
 
+// Find the distance to the closest existing pad for the gap-filling step.
 function nearestLilyDistance(x, y) {
   let nearest = 2;
   for (let i = 0; i < lilies.length; i++) {
@@ -143,16 +149,19 @@ function setupWaterMarks() {
 
 }
 
+// Sample noise a little further along each frame for smooth movement.
 function updatePerlinMechanic(state) {
   noiseTime += noiseSpeed;
   for (let i = 0; i < lilies.length; i++) {
     let lily = lilies[i];
     // noise is 0..1; map centers it around zero for a bounded local drift.
     // Use the shorter canvas dimension so movement keeps the same proportions.
-    // USER INPUT adapter: combine offsets in this single position writer.
+    // Add the input module's ripple offset to the noise drift. Both are
+    // measured from the original position, so movement does not build up.
     let inputOffset = getInputLilyOffset(lily, state);
     lily.x = lily.baseX + (map(noise(lily.seedX + noiseTime), 0, 1, -driftAmount, driftAmount) + inputOffset.x) * state.unit / state.width;
     lily.y = lily.baseY + (map(noise(lily.seedY + noiseTime), 0, 1, -driftAmount, driftAmount) + inputOffset.y) * state.unit / state.height;
+    // While dragging, use the position set by the input module directly.
     if (inputLilyIsDragged(lily)) {
       lily.x = lily.baseX;
       lily.y = lily.baseY;
@@ -160,6 +169,7 @@ function updatePerlinMechanic(state) {
   }
 }
 
+// Draw the stored marks each frame; their random values stay the same.
 function drawPondWater(state) {
   push();
   background(pondPalette[0][0], pondPalette[0][1], pondPalette[0][2]);

@@ -11,7 +11,8 @@ function createPerlinRipple(x, y) {
 }
 
 function getPerlinRippleSpeed(ripple) {
-  // Positive bounded expansion: noise changes speed smoothly, never reverses it.
+  // Map noise from 0–1 to a speed multiplier of 0.65–1.35.
+  // The multiplier stays positive, so the ripple continues expanding.
   // The same radius is used by drawing and the existing lily response.
   return ripple.baseSpeed * map(noise(ripple.noiseSeed+ripple.age*0.04),0,1,0.65,1.35);
 }
@@ -34,11 +35,14 @@ function respondFishToRipples(state) {
     const ripple=state.ripples[i];
     const dx=(fish.x-ripple.x)*state.width;
     const dy=(fish.y-ripple.y)*state.height;
-    // Match the displayed wave's 0.72 vertical scale, not a circular hit area.
+    // The displayed ripple is flattened vertically by 0.72. Undo that scale
+    // when measuring distance, then compare the fish with the moving wave edge.
     if (!ripple.fishReacted && ripple.strength>0 &&
         abs(dist(0,0,dx,dy/0.72)-ripple.radius*state.unit)<state.unit*0.025) {
       // Mark this wave once: standing in its band must not reroll every frame.
       ripple.fishReacted=true;
+      // Compare the fish's heading with the direction from the ripple.
+      // The sign of side chooses which way the fish turns.
       const side=cos(fish.heading)*dy-sin(fish.heading)*dx;
       let direction=1;
       if (side<0) direction=-1;
@@ -60,6 +64,7 @@ function updatePondFish(state) {
   // Music remains a future 0..1 connector; disturbance is owned here.
   fish.disturbance=fish.responseFrames/fish.responseDuration;
   const disturbance=constrain(fish.disturbance,0,1);
+  // Nearby noise values change gradually, so the fish does not jerk around.
   fish.heading+=map(noise(fish.seed+fish.time),0,1,-2,2);
   if (fish.responseFrames>0) {
     const bend=map(noise(fish.responseSeed+(fish.responseDuration-fish.responseFrames)*0.07),0,1,0.7,1.3);
@@ -74,6 +79,8 @@ function updatePondFish(state) {
   if(fish.y<0.18) turn+=cos(fish.heading)*4;
   if(fish.y>0.82) turn-=cos(fish.heading)*4;
   fish.heading+=turn;
+  // Convert the heading into horizontal and vertical movement below.
+  // The ripple boost fades with disturbance; constrain keeps the fish in view.
   const speed=fish.speed*(1+constrain(fish.audioLevel,0,1)*0.5+disturbance*fish.responseBoost);
   fish.x=constrain(fish.x+cos(fish.heading)*speed*state.unit/state.width,0.06,0.94);
   fish.y=constrain(fish.y+sin(fish.heading)*speed*state.unit/state.height,0.12,0.88);
