@@ -1,5 +1,16 @@
 # Water Lilies / 睡莲互动池塘
 
+## 音频与四季同步更新（2026-10-27）
+
+这是 IDEA9103 学生课程作业，仅计划在小组私人仓库中用于课堂协作，非商业用途。本节说明当前版本；后面的早期阶段说明保留为历史记录。
+
+- 点击 **Play music / Pause music** 播放、暂停约 100 秒的循环音频。页面不会自动播放。
+- 音乐的 level（整体强弱）使原有二维鱼的速度在基础值的 1–6 倍、大小在 1–2.2 倍之间变化。`audio-mechanic.js` 保存鱼原本的随机速度和大小，再计算每帧的新值；没有修改队友的 `perlin-water-life.js`，其游动方向、绘制和水波响应仍由原脚本负责。
+- 保留 **Auto: On/Off**。音乐暂停时，Auto On 仍按原来的每 600 帧换季；再次播放会进入画面当前季节及其进度。播放中，Auto On 按音频的 0／28／57／80 秒切季；Auto Off 冻结季节，音乐只循环当前季节片段。四个季节按钮同时跳转音乐和画面。
+- 音频来自 Robert Schumann《Kinderszenen》Op.15，Anna Vinnitskaya 演奏，SWR Classic / ARD Klassik（[原视频](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)）。使用学生提供的 OBS 录音，截取录音 7.2–107.2 秒，首尾做短淡入淡出。黑屏录制无网页时间码，不能声称精确对应原视频时间。
+- **署名和非商业声明不等于取得录音再发布许可。** 保持仓库私有；公开展示或再发布前应取得许可或换用许可清楚的录音。
+- 音频设计由学生提出；ChatGPT/Codex 协助音频剪辑、代码、注释、文档和本地检查。Week 10 Tutorial Part 1 提供 `loadSound`、`p5.Amplitude` 和 `getLevel`；`map`、`constrain`、`lerp` 是课程 p5.js 技术。`pause()`、`loop()`、`jump()`、`currentTime()` 属 p5.sound 官方补充方法。更多代码说明、来源和检查步骤见 [Audio mechanic 说明](docs/audio-mechanic.md)。
+
 ## 哲明第二周更新（2026-10-23）
 
 鱼的水波响应已接入：按波纹的椭圆比例检查波前是否靠近鱼，每个水波只触发一次。random 决定转向强度、35–60 帧的持续时间和短暂加速；noise 连续调节转弯速率，响应随剩余时间衰减，结束后恢复基础游速。转向侧根据鱼朝向和扰动来源计算，正好同轴时随机选择。使用 dist、abs、sin/cos、random、noise、map、max、普通对象与循环，均在第 3/4、7、8、11 周范围内。未新增超纲 API。
