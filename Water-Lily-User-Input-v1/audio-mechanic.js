@@ -1,4 +1,3 @@
-// AI-assisted EMPTY scaffold. Owner and original audio design remain unconfirmed.
 // These functions intentionally do nothing; they are not a completed mechanic.
 // Week 10 audio API may be used after adding the agreed sound asset and p5.sound.
 // Initialize only this module's variables in setup; do not redefine p5 setup/draw.
