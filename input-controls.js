@@ -1,8 +1,9 @@
-// USER INPUT: spring bloom, summer dragging, autumn gathering, winter snow.
+// User Input controls the flowers, lily pads, leaves, snow and ice.
+// It uses variables, functions, arrays, conditions, loops, mouse/key events,
+// distance checks, basic shapes and drawing transforms from Weeks 1–8.
 // AI assistance: ChatGPT/Codex helped draft and test this module.
-// W2 arithmetic; W3 functions/objects/arrays; W4 conditions/loops;
-// W6 mouse/key events and drawing; W7 dist/array operations; W8 transforms.
-// No noise/random, lerp, vectors, physics engine, timers or pixel processing.
+
+// These variables keep the state between frames.
 let inputHand;
 let inputSeason = -1;
 let inputLeaves = [];
@@ -12,6 +13,7 @@ let inputSnowQueue = [];
 let inputCracks = [];
 let inputCrackCount = 0;
 
+// Set the starting values for this mechanic.
 function setupInputMechanic(state) {
   inputHand = {down:false, inside:false, x:0, y:0, startX:0, startY:0,
     moved:false, dragIndex:-1, lastTrailX:0, lastTrailY:0, held:[]};
@@ -28,24 +30,28 @@ function setupInputMechanic(state) {
   syncInputSeason();
 }
 
-// Fixed steps use ordinary comparisons and addition, not lerp().
+// Move a value toward its target by a small amount each frame.
 function inputStep(value, target, step) {
   if (value<target) {value+=step; if(value>target) value=target;}
   else if (value>target) {value-=step; if(value<target) value=target;}
   return value;
 }
+// Keep a value between a minimum and maximum.
 function inputLimit(value, low, high) {
   if(value<low) return low;
   if(value>high) return high;
   return value;
 }
-function inputDistance(x1,y1,x2,y2,state) {
+// Find the distance between two positions on the canvas.
+function inputDistance(x1, y1, x2, y2, state) {
   return dist(x1*state.width,y1*state.height,x2*state.width,y2*state.height);
 }
-function inputCanvasPoint(x,y,state) {
+// Ignore clicks on the page instructions and season buttons.
+function inputCanvasPoint(x, y, state) {
   // Reserve the header and bottom HTML controls, avoiding button-click ripples.
   return x>=0 && x<=1 && y*state.height>86 && y*state.height<state.height-104;
 }
+// Clear temporary input effects when the season changes.
 function syncInputSeason() {
   if(inputSeason!==season) {
     inputHand.down=false; inputHand.dragIndex=-1;
@@ -59,7 +65,8 @@ function syncInputSeason() {
   }
 }
 
-function inputFindLily(state,x,y,flowerOnly) {
+// Find the nearest lily under the mouse. Flower clicks only count on flowers.
+function inputFindLily(state, x, y, flowerOnly) {
   let chosen=-1;
   let nearest=state.unit;
   if(leafScale<0.12) return chosen;
@@ -75,6 +82,7 @@ function inputFindLily(state,x,y,flowerOnly) {
   return chosen;
 }
 
+// Update mouse actions and the visual responses for this frame.
 function updateInputMechanic(state) {
   syncInputSeason();
   inputHand.x=mouseX/state.width; inputHand.y=mouseY/state.height;
@@ -94,7 +102,8 @@ function updateInputMechanic(state) {
     }
     if(season===2 || (season===3 && inputHand.moved)) gatherInputParticles(state);
     if(season===3 && inputDistance(inputHand.x,inputHand.y,inputHand.lastTrailX,inputHand.lastTrailY,state)>state.unit*0.025) {
-      addInputSnow(inputHand.x,inputHand.y);
+      let snowMark = {x:inputHand.x, y:inputHand.y, age:0, fadeAmount:1, fading:false};
+      addInputTrail(snowMark, inputSnow, inputSnowQueue);
       inputHand.lastTrailX=inputHand.x; inputHand.lastTrailY=inputHand.y;
     }
   }
@@ -170,7 +179,9 @@ function updateInputMechanic(state) {
 
 }
 
-function handleInputPressed(state,x,y) {
+// Remember where the mouse press started.
+// Mouse input
+function handleInputPressed(state, x, y) {
   syncInputSeason();
   if(!inputCanvasPoint(x,y,state)) return;
   inputHand.down=true; inputHand.x=x; inputHand.y=y;
@@ -186,7 +197,8 @@ function handleInputPressed(state,x,y) {
   }
   if(season===2) gatherInputParticles(state);
 }
-function handleInputReleased(state,x,y) {
+// Decide whether the mouse action was a click or a drag.
+function handleInputReleased(state, x, y) {
   syncInputSeason();
   if(!inputHand.down) return;
   if(inputDistance(x,y,inputHand.startX,inputHand.startY,state)>6) inputHand.moved=true;
@@ -208,7 +220,9 @@ function handleInputReleased(state,x,y) {
   inputHand.down=false; inputHand.dragIndex=-1;
 }
 
-function inputFindIceFloe(state,x,y) {
+// Find the ice floe under the mouse.
+// Winter interaction
+function inputFindIceFloe(state, x, y) {
   if(typeof ice==='undefined' || typeof iceAmount==='undefined' || iceAmount<0.1) return -1;
   let chosen=-1, nearest=state.unit;
   for(let i=0;i<ice.length;i++) {
@@ -224,7 +238,8 @@ function inputFindIceFloe(state,x,y) {
   return chosen;
 }
 
-function addInputIceCrack(state,x,y,floe,floeIndex) {
+// Add one lasting crack to a floe. Each floe can have one crack.
+function addInputIceCrack(state, x, y, floe, floeIndex) {
   for(let i=0;i<inputCracks.length;i++) {
     if(inputCracks[i].floeIndex===floeIndex) return;
   }
@@ -233,7 +248,7 @@ function addInputIceCrack(state,x,y,floe,floeIndex) {
   let ry=floe.size*state.unit*0.35*iceAmount;
   let edgePosition=dx*dx/(rx*rx)+dy*dy/(ry*ry);
   let lengthFactor=inputLimit(0.18+(1-edgePosition)*0.34,0.18,0.52);
-  // Move the mark slightly toward the floe centre so edge clicks stay on the ice.
+    // Move the crack toward the centre so it stays on the ice.
   let crackX=floe.x+(x-floe.x)*0.15;
   let crackY=floe.y+(y-floe.y)*0.15;
   let crack={x:crackX,y:crackY,size:floe.size*lengthFactor,
@@ -242,7 +257,8 @@ function addInputIceCrack(state,x,y,floe,floeIndex) {
   inputCracks.push(crack);
 }
 
-function addInputRipple(state,x,y) {
+// Add a ripple at the mouse position.
+function addInputRipple(state, x, y) {
   // Team schema: relative centre, short-side radius, strength, age in frames.
   if(state.ripples.length>=12) {
     for(let i=0;i<state.ripples.length-1;i++) state.ripples[i]=state.ripples[i+1];
@@ -251,6 +267,7 @@ function addInputRipple(state,x,y) {
   state.ripples.push(createPerlinRipple(x,y));
 }
 
+// Gather nearby leaves or snow while the mouse is held.
 function gatherInputParticles(state) {
   for(let i=0;i<particles.length;i++) {
     let p=particles[i];
@@ -265,8 +282,9 @@ function releaseInputParticles(state) {
   for(let i=0;i<inputHand.held.length;i++) {
     let p=inputHand.held[i];
     if(season===2) {
-      addInputLeaf({x:p.x,y:p.y,angle:i*47,fadeAmount:1,fading:false});
-      // Ask the time module to recycle it next update, spread across the sky.
+      let leaf = {x:p.x, y:p.y, angle:i*47, fadeAmount:1, fading:false};
+      addInputTrail(leaf, inputLeaves, inputLeafQueue);
+      // The time module moves it back above the canvas.
       p.inputRecycle=true;
     } else if(season===3) p.inputRelease=35;
     p.inputHeld=false;
@@ -274,22 +292,23 @@ function releaseInputParticles(state) {
   inputHand.held=[];
 }
 
-function addInputLeaf(leaf) {
-  if(inputLeaves.length<40 && inputLeafQueue.length===0) inputLeaves.push(leaf);
+// Add a leaf or snow mark, then fade the old group if the list is full.
+function addInputTrail(mark, marks, markQueue) {
+  if(marks.length<40 && markQueue.length===0) marks.push(mark);
   else {
-    inputLeafQueue.push(leaf);
-    for(let i=0;i<inputLeaves.length;i++) inputLeaves[i].fading=true;
+    markQueue.push(mark);
+    for(let i=0;i<marks.length;i++) marks[i].fading=true;
   }
 }
 
-// Called inside the time module's update: a single writer changes positions.
+// Called by the time module to move gathered objects and release them.
 function applyInputToParticle(state,p) {
   if(p.inputRecycle) {
     p.x=(p.inputSlot*0.137+0.09)%1;
     p.y=-0.03-p.inputSlot*0.027;
     p.inputRecycle=false;
   } else if(p.inputHeld) {
-    // W8 sin/cos: a small, uneven spiral avoids a rigid rectangular bundle.
+    // Place the gathered objects in a loose circle around the cursor.
     let angle=p.inputSlot*137;
     let radius=state.unit*(0.012+p.inputSlot*0.002);
     let tx=inputLimit(inputHand.x,0.04,0.96)+cos(angle)*radius/state.width;
@@ -300,16 +319,7 @@ function applyInputToParticle(state,p) {
     p.inputRelease-=1;
   }
 }
-function addInputSnow(x,y) {
-  let trace={x:x,y:y,age:0,fadeAmount:1,fading:false};
-  if(inputSnow.length<40 && inputSnowQueue.length===0) inputSnow.push(trace);
-  else {
-    inputSnowQueue.push(trace);
-    for(let i=0;i<inputSnow.length;i++) inputSnow[i].fading=true;
-  }
-}
-
-// Called only by the Perlin module. Offset values are short-side fractions.
+// Give the Perlin module the small movement caused by the pointer.
 function getInputLilyOffset(lily,state) {
   let x=lily.inputPushX, y=lily.inputPushY;
   for(let i=0;i<state.ripples.length;i++) {
@@ -329,13 +339,14 @@ function inputLilyIsDragged(lily) {
   return inputHand.down && inputHand.dragIndex>=0 && lilies[inputHand.dragIndex]===lily;
 }
 
-// Three RGB channels only. Contrast changes use ordinary arithmetic.
+// Mix a highlight colour with the pond colour.
 function inputWaterColour(r,g,b,amount) {
   let water=pondPalette[0];
   return [water[0]+(r-water[0])*amount,
     water[1]+(g-water[1])*amount,water[2]+(b-water[2])*amount];
 }
 
+// Draw ripples, highlights, collected leaves and snow marks.
 function drawInputMechanic(state) {
   push(); noFill(); strokeWeight(1.2);
   for(let i=0;i<state.ripples.length;i++) {
@@ -376,7 +387,7 @@ function drawInputMechanic(state) {
   pop();
 }
 
-// Called after drawTimeMechanic() so the crack remains visible above the ice.
+// Draw cracks after the ice so they stay visible.
 function drawInputIceCracks(state) {
   push();
   noFill();
@@ -416,7 +427,7 @@ function drawInputIceCrack(crack,state) {
   pop();
 }
 
-// Keep the team's seasonal size; use a separate opening state for each flower.
+// Draw a flower between its closed and open states.
 function drawInputLilyFlower(lily,size) {
   let opening=lily.inputBloom/30;
   if(opening>=1) {drawLilyFlower(size); return;}
@@ -430,6 +441,7 @@ function drawInputLilyFlower(lily,size) {
   fill(224,184,90); circle(0,0,size*(0.04+opening*0.11)); pop();
 }
 
+// Keyboard input shared by all seasons.
 function handleInputKey(state,pressedKey) {
   if(pressedKey==='b' || pressedKey==='B') {
     for(let i=0;i<lilies.length;i++) lilies[i].inputTarget=30;
