@@ -18,6 +18,15 @@ let audioMaxSize = 2.2;
 let audioFishBaseSpeed;
 let audioFishBaseSize;
 let audioSeekFrames = 0;
+// After jump(), currentTime() can report the old position for a few frames.
+let audioSeekGuardFrames = 12;
+// Shared with teammates' files. These must match the values used there:
+// time-mechanic.js counts 600 frames per season when music is paused,
+// winter is season index 3, and perlin-lilies.js creates 550 broad patches
+// before its fine brush marks.
+let audioSeasonFrameLength = 600;
+let audioWinterSeason = 3;
+let audioBroadPatchCount = 550;
 // Water response: preserve each selected brush mark's original values and y.
 // The Perlin teammate still creates and draws all water marks in their file.
 let audioWaterMarks = [];
@@ -29,6 +38,10 @@ let audioLightX = 0.2;
 let audioLightDirection = 1;
 let audioLightSpeed = 0.00035;
 let audioLightRadius = 0.26;
+// Most 0.1-second RMS windows of the WAV are near 0.02..0.09.
+// This is a local tuning guide, not a measured p5 getLevel() range.
+let audioWaterQuietLevel = 0.02;
+let audioWaterStrongLevel = 0.09;
 
 // 2. LOAD — called from the single preload() in sketch.js, so p5 finishes
 // loading the sound file before setup(). Output: the sound file audioSong.
@@ -49,7 +62,7 @@ function setupAudioMechanic(state) {
   // horizontal stroke from the teammate's existing waterMarks array.
   // A moving light needs marks outside the original, fixed reflection band.
   // No new water objects are added; selected marks can shift around their original y.
-  for (let i = 550; i < waterMarks.length; i++) {
+  for (let i = audioBroadPatchCount; i < waterMarks.length; i++) {
     let mark = waterMarks[i];
     if (i % 4 === 0 && mark.w > 0.018 && mark.h < 0.008) {
       audioWaterMarks.push({mark:mark, y:mark.y, w:mark.w, alpha:mark.alpha,
@@ -70,9 +83,10 @@ function handleAudioPressed() {
     // Seasons can keep moving while paused. Match their current progress.
     let start = seasonStartTimes[season];
     let end = seasonStartTimes[season + 1];
-    let progress = constrain(seasonFrames / 600, 0, 0.99);
+    let progress = constrain(seasonFrames / audioSeasonFrameLength, 0, 0.99);
     seekAudioTo(start + (end - start) * progress);
-    seasonSeekFrames = 12;
+    // Tell the time mechanic to wait for the jump before reading song time.
+    seasonSeekFrames = audioSeekGuardFrames;
   }
 }
 
@@ -82,64 +96,80 @@ function handleAudioPressed() {
 function seekAudioTo(seconds) {
   if (!audioSong.isPlaying()) audioSong.loop();
   audioSong.jump(seconds);
-  audioSeekFrames = 12;
+  audioSeekFrames = audioSeekGuardFrames;
   audioButton.innerHTML = 'Pause music';
 }
 
 // 6. ANALYSE AND MAP — input: team state and current song level. Output song
 // time/playing state, fish speed/size, and properties of existing water marks.
-// Capture its random base values once; never multiply last frame's values.
-// Perlin direction, drawing and ripple response remain in the teammate file.
+// Each step lives in its own helper below so the order is easy to follow.
 // Official p5.sound currentTime():
 // https://v1.p5js.org/reference/p5.SoundFile/currentTime/
 function updateAudioMechanic(state) {
   state.audioTime = audioSong.currentTime();
   state.audioPlaying = audioSong.isPlaying();
-  // Auto Off freezes the season; repeat its passage of the same song.
-  if (audioSeekFrames > 0) audioSeekFrames--;
-  else if (state.audioPlaying && !autoChange) {
-    let start = seasonStartTimes[season];
-    let end = seasonStartTimes[season + 1];
-    if (state.audioTime < start || state.audioTime >= end) {
-      seekAudioTo(start);
-      state.audioTime = start;
-    }
+  keepSongInFrozenSeason(state);
+  audioLevel = 0;
+  if (state.audioPlaying) audioLevel = audioAnalyser.getLevel();
+  updateFishFromLevel();
+  updateWaterLightFromLevel(state);
+}
+
+// 6a. Auto Off freezes the season; repeat its passage of the same song.
+function keepSongInFrozenSeason(state) {
+  if (audioSeekFrames > 0) {
+    audioSeekFrames--;
+    return;
   }
-  if (audioFishBaseSpeed === undefined && pondFish) {
+  if (!state.audioPlaying || autoChange) return;
+  let start = seasonStartTimes[season];
+  let end = seasonStartTimes[season + 1];
+  if (state.audioTime < start || state.audioTime >= end) {
+    seekAudioTo(start);
+    state.audioTime = start;
+  }
+}
+
+// 6b. FISH — louder music makes the fish faster and larger.
+// Capture its random base values once; never multiply last frame's values.
+// Perlin direction, drawing and ripple response remain in the teammate file.
+function updateFishFromLevel() {
+  if (!pondFish) return;
+  if (audioFishBaseSpeed === undefined) {
     audioFishBaseSpeed = pondFish.speed;
     audioFishBaseSize = pondFish.size;
   }
-  audioLevel = 0;
-  if (audioSong.isPlaying()) audioLevel = audioAnalyser.getLevel();
   let target = map(audioLevel, audioQuietLevel, audioStrongLevel, 0, 1);
   target = constrain(target, 0, 1);
   // Winter fish keeps its Perlin movement but has no music-driven boost.
-  if (season === 3) target = 0;
+  if (season === audioWinterSeason) target = 0;
   audioResponse = lerp(audioResponse, target, audioSmoothing);
-  if (audioFishBaseSpeed !== undefined) {
-    // The teammate's audioLevel adds a separate 0–50% speed boost.
-    // Set it to zero so this AI-assisted amplitude mapping alone gives
-    // a clear 1–6x range; the student chose the fish and response limits.
-    // In winter, restore the original speed and size immediately.
-    pondFish.audioLevel = 0;
-    if (season === 3) {
-      pondFish.speed = audioFishBaseSpeed;
-      pondFish.size = audioFishBaseSize;
-    } else {
-      pondFish.speed = audioFishBaseSpeed * map(audioResponse, 0, 1, 1, audioMaxSpeed);
-      pondFish.size = audioFishBaseSize * map(audioResponse, 0, 1, 1, audioMaxSize);
-    }
+  // The teammate's audioLevel adds a separate 0–50% speed boost.
+  // Set it to zero so this AI-assisted amplitude mapping alone gives
+  // a clear 1–6x range; the student chose the fish and response limits.
+  // In winter, restore the original speed and size immediately.
+  pondFish.audioLevel = 0;
+  if (season === audioWinterSeason) {
+    pondFish.speed = audioFishBaseSpeed;
+    pondFish.size = audioFishBaseSize;
+  } else {
+    pondFish.speed = audioFishBaseSpeed * map(audioResponse, 0, 1, 1, audioMaxSpeed);
+    pondFish.size = audioFishBaseSize * map(audioResponse, 0, 1, 1, audioMaxSize);
   }
-  // Most 0.1-second RMS windows of the WAV are near 0.02..0.09.
-  // This is a local tuning guide, not a measured p5 getLevel() range.
-  // The reflected light moves only while the music plays, and pauses with it.
-  // It changes existing marks; it does not draw a new light or input ripple.
-  // AI assistance: ChatGPT/Codex helped tune this amplitude-to-brush mapping.
-  let waterTarget = constrain(map(audioLevel, 0.02, 0.09, 0, 1), 0, 1);
+}
+
+// 6c. WATER LIGHT — a warm reflection drifts across the pond while music
+// plays; louder music makes nearby brush marks wider, brighter and warmer.
+// It changes existing marks; it does not draw a new light or input ripple.
+// AI assistance: ChatGPT/Codex helped tune this amplitude-to-brush mapping.
+function updateWaterLightFromLevel(state) {
+  let waterTarget = map(audioLevel, audioWaterQuietLevel, audioWaterStrongLevel, 0, 1);
+  waterTarget = constrain(waterTarget, 0, 1);
   audioWaterResponse = lerp(audioWaterResponse, waterTarget, 0.42);
   // A second, slower lerp filters quick level spikes from vertical motion.
   // Marks still update every frame; they move more gradually and farther.
   audioWaterMotion = lerp(audioWaterMotion, waterTarget, 0.05);
+  // The reflected light moves only while the music plays, and pauses with it.
   if (state.audioPlaying) {
     audioLightX += audioLightDirection * audioLightSpeed;
     if (audioLightX >= 0.8 || audioLightX <= 0.2) {
@@ -151,12 +181,11 @@ function updateAudioMechanic(state) {
   for (let i = 0; i < audioWaterMarks.length; i++) {
     let base = audioWaterMarks[i];
     let mark = base.mark;
-    let distance = mark.x - audioLightX;
-    if (distance < 0) distance = -distance;
+    let distance = abs(mark.x - audioLightX);
     let nearLight = constrain(map(distance, 0, audioLightRadius, 1, 0), 0, 1);
     let light = audioWaterResponse * nearLight;
-    // Neighbouring horizontal marks move farther but more slowly in opposite directions.
-    // They pulse around stored y positions as the level rises and falls.
+    // Neighbouring marks move in opposite directions around their stored y,
+    // so the reflection shimmers as the level rises and falls.
     let verticalDirection = 1;
     if (i % 2 === 0) verticalDirection = -1;
     mark.y = base.y + verticalDirection * audioWaterMotion * nearLight * 0.014;
