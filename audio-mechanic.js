@@ -1,5 +1,7 @@
 // AUDIO ITERATION 2 — keep fish response and add moving water light.
 // Student audio design; ChatGPT/Codex assisted with code and comments.
+// Claude helped split the update into the helper functions in section 6 and
+// name the shared constants in section 1; behaviour was kept the same.
 // Week 10 Tutorial Part 1: preload/loadSound, p5.Amplitude, setInput,
 // getLevel, isPlaying and loop. p5.js map/constrain/lerp map the level to art.
 // True pause and seasonal seeking use official p5.sound supplements below.

@@ -1,56 +1,81 @@
 # Water Lily Pond
 
-This is our IDEA9103 Creative Coding major project. We reinterpret the atmosphere of Monet's water lily paintings as a two-dimensional pond that moves through spring, summer, autumn, and winter. The project combines time, audio, Perlin noise and randomness, and user input in separate scripts.
+IDEA9103 Creative Coding major project. A two-dimensional pond, reinterpreted from Claude Monet's *Water Lilies*, moves through spring, summer, autumn and winter. Four mechanics, each in its own script, drive the piece: time, audio, Perlin noise and randomness, and user input.
 
-This README describes my second audio iteration. The first audio iteration remains in Git history.
+## How to run
+
+`loadSound()` cannot read files from `file://`, so open the project through a local HTTP server, for example VS Code **Live Server** on `index.html`, or:
+
+```bash
+python3 -m http.server 8000
+```
+
+then visit `http://localhost:8000`. Everything (p5.js 1.11.11, p5.sound 1.0.1, the audio file) is included in the repository; no internet connection or npm install is needed.
+
+## Interaction instructions
+
+- **Play music / Pause music** starts or pauses the soundtrack. Music never autoplays and the microphone is not used. While music plays, watch the fish and the warm reflection drifting across the water.
+- **Spring / Summer / Autumn / Winter** jump both the picture and the music to that season.
+- **Auto: On / Off**. With Auto On, the seasons follow the music while it plays, and a 600-frame timer while it is paused. With Auto Off, the season stays fixed and the music repeats that season's passage.
+- **Spring:** click a lily with a flower to open or close it.
+- **Summer:** press and drag a lily pad to move it.
+- **Autumn:** hold the mouse near falling leaves to gather them, then release to leave a cluster.
+- **Winter:** hold and drag through the snow to gather it and leave a short trail.
+- **Click open water** in any season to make a ripple; nearby lilies and the fish react.
+- **B** opens all flowers. **R** closes flowers and resets your changes.
 
 ## Inspiration
 
-Claude Monet's *Water Lilies* paintings inspired our layered pond rather than an exact copy of one canvas. We used floating lilies, short horizontal reflection marks, and changing seasonal colours to reinterpret the paintings' water and light. The slowly moving reflection is my audio mechanic's contribution to that idea.
+Claude Monet's *Water Lilies* series inspired the layered pond rather than a copy of one canvas: floating lily pads, short horizontal reflection strokes and changing light on still water. We added the passing of the seasons so the pond follows a calm → disturbed → recovering rhythm, with each mechanic adding one way the pond can change. The soundtrack, Schumann's *Kinderszenen*, was chosen because its lively opening pieces and quieter ending suit spring and summer moving into winter.
 
-## Run and interact
+## Techniques
 
-Open the project through a local HTTP server, such as VS Code Live Server, and load index.html. Press Play music to start the recorded soundtrack and Pause music to pause it. Music does not autoplay, and this project does not use the microphone.
+- **Modular structure.** `sketch.js` holds the only p5 lifecycle functions (`preload`, `setup`, `draw`, mouse/key events, `windowResized`). Each mechanic exposes `setup…Mechanic(state)`, `update…Mechanic(state)` and `draw…Mechanic(state)` and receives the shared `pond` object.
+- **Normalized coordinates.** Positions are stored as 0–1 fractions of the canvas and sizes as fractions of the shorter side, so `windowResized()` only resizes the canvas and nothing is regenerated.
+- **Painterly water.** About 3,750 semi-transparent ellipses (550 broad patches and two layers of fine strokes) placed with `random()` and coloured with 2D `noise()` and `lerp()`.
+- **Bounded, eased responses.** Every reactive value is calculated from a stored base value with `map()`, `constrain()` and `lerp()`, so nothing grows frame by frame.
+- **Audio analysis.** `p5.Amplitude.getLevel()` measures the song's overall loudness each frame (Week 10).
+- **Time.** Frame counters and the song's playhead (`currentTime()`) decide the season; leaf and flower size and colour ease between seasonal targets.
+- **Input.** `mousePressed`, `mouseReleased`, `keyPressed` and `dist()` drive the seasonal interactions and ripples.
 
-The four season buttons jump both the image and music to the chosen passage. With Auto On, music time leads the seasons while playing. When paused, the original 600-frame seasonal cycle continues; Play matches the current season. With Auto Off, the season stays fixed and music repeats its matching passage. Click open water for the team's interactive ripples. The interface explains the other seasonal controls.
+## Mechanic ownership
 
-## My audio work
+| Mechanic | Owner (Git author) | Script(s) | What it does |
+| --- | --- | --- | --- |
+| Audio | Jielun Huang (`jielun-Huang`) | `audio-mechanic.js` | Plays the soundtrack with true pause and seasonal seeking. The music level makes the fish swim up to 6× faster and 2.2× larger in spring to autumn, and moves a warm reflection across the pond that brightens, widens and shimmers with louder music. |
+| Time-based | `SHiN666666` | `time-mechanic.js` | Season timer, season buttons and Auto switch; eases lily and flower size and colour between seasons; falling petals, leaves and snow. Follows the music's playhead while it plays. |
+| Perlin noise and randomness | Zheming Yu (`874593718`) | `perlin-lilies.js`, `perlin-water-life.js` | Random palette, lily layout and painterly water; noise-driven lily drift; a fish with noise-steered movement; ripples with random size and noise-varied speed, and the fish's random turning response. |
+| User input | `EdithWu79` | `input-controls.js` | Seasonal mouse interactions (bloom, drag, gather leaves, gather snow), water ripples, hover response and the B/R keys. |
 
-I selected and edited a piano recording to support the movement from lively spring and summer to quieter winter. In my first iteration, I used p5.Amplitude.getLevel() to make the existing fish swim faster and grow larger as the music becomes louder. I left the fish's Perlin path, drawing, and response to user-created ripples in my teammate's script. I also added genuine Play/Pause and supplied song time for the seasonal controls.
+`index.html` loads the libraries and scripts and holds the buttons; `sketch.js` connects the mechanics and sets the drawing order.
 
-In my **second audio iteration**, I keep the fish response in spring, summer, and autumn, and change only existing horizontal water brush marks. A small area of reflected light moves slowly across the pond while music plays. Louder music makes nearby marks wider, brighter, and warmer yellow. A separate, slower response filters quick changes in the sound level, so the marks move more gradually and farther up or down. The code still updates their positions every frame. Quieter music returns them to their stored values. Pausing the music stops the moving area and lets the marks settle. In winter, the fish returns to its original Perlin speed and size while the water still responds to music. I do not create or alter the user-input ripple objects. Only audio-mechanic.js changes executable behaviour; this README explains the audio mechanic. My teammate still owns water generation and drawing in perlin-lilies.js.
+### Audio mechanic in detail
 
-The recording lasts about 100 seconds. I use approximate season starts at 0, 28, 57, and 80 seconds. These are editing choices, not automatically detected beats. getLevel() measures overall amplitude, not pitch or emotional mood. I use map(), constrain(), and lerp() to keep the response bounded and smooth. In spring through autumn, the fish retains its first-iteration audio range: speed 1–6 times its original value and size 1–2.2 times its original value. In winter, those multipliers are both 1. For water, I select every fourth fine mark after the first 550 broad colour patches and map a song level of about 0.02–0.09 to a bounded response. I use a quicker lerp for colour, width, and opacity and a slower lerp for the stronger vertical motion. Each mark moves around its saved starting position, so the change does not build up over time.
+`audio-mechanic.js` is split into small functions:
 
-## Files and ownership
+- `preloadAudioMechanic()` loads `assets/pond-loop.wav`. It is called from the single `preload()` in `sketch.js`.
+- `setupAudioMechanic()` connects a `p5.Amplitude` analyser to the song, wires the Play button, and stores the original values of every fourth fine water stroke.
+- `handleAudioPressed()` and `seekAudioTo()` play, pause and jump the song.
+- `keepSongInFrozenSeason()` loops the current season's passage when Auto is Off.
+- `updateFishFromLevel()` maps a level of 0.005–0.18 to a 0–1 response, eases it with `lerp(…, 0.12)`, and scales the fish's stored base speed (1–6×) and size (1–2.2×). In winter the fish keeps its base values.
+- `updateWaterLightFromLevel()` moves a light position slowly between 20% and 80% of the width while music plays. Strokes near it become wider, brighter and warmer as the level (mapped from 0.02–0.09) rises. A second, slower `lerp(…, 0.05)` drives a vertical shimmer so quick spikes do not make it jitter.
 
-| File | Role |
-| --- | --- |
-| index.html | Loads local p5.js, p5.sound, scripts, and controls. |
-| sketch.js | Holds the only p5 setup() and draw() and calls the four mechanics. |
-| audio-mechanic.js | My loading, Play/Pause, level analysis, fish mapping, and moving light and shimmer (Git author: jielun-Huang). |
-| time-mechanic.js | Season timing, particles, and buttons; it reads music time (time contribution: SHiN666666). |
-| perlin-lilies.js | Palettes, brush marks, lilies, and Perlin movement (Perlin contribution: Zheming Yu / 874593718). |
-| perlin-water-life.js | Fish movement and ripple response (Perlin contribution: Zheming Yu / 874593718). |
-| input-controls.js | Mouse and keyboard interactions and interactive ripples (user-input contribution: EdithWu79; root integration: 874593718). |
-| assets/pond-loop.wav | My edited classroom-use recording, subject to the rights note below. |
+The song is about 100 seconds long. The seasons start at 0, 28, 57 and 80 seconds; these were chosen by ear at quiet gaps, not detected automatically. `getLevel()` measures loudness, not pitch or mood.
 
-The handles above follow the Git authors and source headers in this repository. Each teammate retains ownership of their own mechanism.
+## AI acknowledgement
 
-## Course methods, sources, and AI assistance
+All four team members used ChatGPT/Codex, and Claude helped with the final refactor and this README. Each source file marks AI-assisted sections in its comments.
 
-My audio mechanic follows [Week 10 Tutorial Part 1](https://canvas.sydney.edu.au/courses/74653/pages/week-10-tutorial?module_item_id=3241914): preload(), loadSound(), p5.Amplitude, setInput(), getLevel(), isPlaying(), loop(), and using sound level to control a visual property. The tutorial's sample Play/Pause button calls stop(), so my true [pause()](https://p5js.org/reference/p5.SoundFile/pause/) and seasonal [jump()](https://p5js.org/reference/p5.SoundFile/jump/) and [currentTime()](https://v1.p5js.org/reference/p5.SoundFile/currentTime/) are official p5.sound supplements, not tutorial examples. The existing HTML button uses basic browser DOM calls from the earlier team interface, rather than the tutorial's createButton(). I use ordinary course JavaScript arrays, conditions, loops, and p5.js [map()](https://p5js.org/reference/p5/map/), [constrain()](https://p5js.org/reference/p5/constrain/), and [lerp()](https://p5js.org/reference/p5/lerp/). This iteration adds no FFT, microphone input, external visual framework, shader, or Web Audio API. The [assignment](https://canvas.sydney.edu.au/courses/74653/assignments/716000) gives the submission requirements.
+- **Audio (Jielun Huang):** ChatGPT/Codex helped trim and fade the recording, draft the playback, seeking and level-mapping code and comments, and tune the water-light mapping. Claude helped move loading into `sketch.js`, split `updateAudioMechanic()` into helper functions, name the shared constants, and restructure this README. The generated code reads the song level each frame and maps it, within fixed limits, to the fish's speed and size and to the brightness, width, colour and position of existing water strokes, always starting from stored base values.
+- **Time, Perlin and User input:** see the header comments in each script, which describe what the AI helped with and how the code works.
 
-My audio source is Robert Schumann's *Kinderszenen*, Op. 15, performed by Anna Vinnitskaya and published by SWR Classic / ARD Klassik ([source video](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)). I edited my OBS recording from approximately 7.2 to 107.2 seconds and applied short fades. The recording did not preserve reliable source-video timecode, so I cannot claim an exact match to the video timestamps. This private student project is non-commercial. Attribution and non-commercial use do not grant redistribution permission; public release needs permission or a clearly licensed replacement.
+## External references
 
-ChatGPT/Codex helped me edit the supplied recording, write parts of the audio code and comments, calibrate the second-iteration response, and check the result. Teammates' scripts identify their own work and AI assistance. I will keep only code I can explain.
+- [IDEA9103 Week 10 Tutorial](https://canvas.sydney.edu.au/courses/74653/pages/week-10-tutorial?module_item_id=3241914): `loadSound`, `p5.Amplitude`, `setInput`, `getLevel`, `isPlaying`, `loop`.
+- p5.sound methods used beyond the tutorial (the tutorial's button uses `stop()`): [`pause()`](https://p5js.org/reference/p5.SoundFile/pause/), [`jump()`](https://p5js.org/reference/p5.SoundFile/jump/), [`currentTime()`](https://v1.p5js.org/reference/p5.SoundFile/currentTime/).
+- p5.js reference: [`map()`](https://p5js.org/reference/p5/map/), [`constrain()`](https://p5js.org/reference/p5/constrain/), [`lerp()`](https://p5js.org/reference/p5/lerp/), [`noise()`](https://p5js.org/reference/p5/noise/).
+- Libraries: p5.js 1.11.11 ([release file](https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.min.js), licence in `libraries/p5-LICENSE.txt`) and p5.sound 1.0.1.
+- Artwork: Claude Monet, *Water Lilies* series.
+- Music: Robert Schumann, *Kinderszenen*, Op. 15, performed by Anna Vinnitskaya, SWR Classic / ARD Klassik ([source video](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)). It was trimmed from a screen recording to 100 seconds with short fades. This is a non-commercial student project in a private repository. Attribution does not grant redistribution rights, so the recording must be replaced with a licensed one before any public release.
 
-## Manual checks
-
-1. Load the page through a local server. Check that music does not autoplay and no JavaScript error appears.
-2. Play and pause. Compare quiet and loud passages: the moving warm reflections brighten quickly while their vertical motion changes more slowly. In winter, check that the fish keeps its original movement and size while the water still responds.
-3. Try each season button and Auto On/Off. Check that music and seasons stay aligned.
-4. Click open water and try the seasonal controls. Check that user-input ripples and teammate mechanics still work.
-5. Check the audio mechanic against the documented sources and AI assistance. Each team member should commit meaningful work under their own contribution.
-
-Earlier notes in docs/ describe previous stages and should not be mistaken for the current integrated project.
+More detail: [course scope](docs/course-scope.md), [painterly water](docs/painterly-water.md), [audio first iteration](docs/audio-mechanic.md), [user-input guide (zh)](Water-Lily-User-Input-v1/docs/user-input-guide-zh.md).
