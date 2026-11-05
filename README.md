@@ -1,39 +1,39 @@
 # Water Lilies / 睡莲互动池塘
 
-## 音频机制（Jielun Huang）— 第二次迭代（2026-11-01）
+## Audio mechanic (Jielun Huang) — second iteration (2026-11-01)
 
-这是 IDEA9103 学生课程作业，仅计划在小组私人仓库中用于课堂协作，非商业用途。本节只说明音频部分；后面的组员说明保留原样。第一次迭代（2026-10-27）的说明见 [Audio mechanic 说明](docs/audio-mechanic.md) 和 Git 历史。
+This is an IDEA9103 student project, shared only in our private team repository for non-commercial class use. This section covers the audio mechanic only; my teammates' sections below are unchanged. The first iteration (2026-10-27) is described in [Audio mechanic notes](docs/audio-mechanic.md) and in the Git history.
 
-**运行：** `loadSound()` 不能从 `file://` 读取音频，请用本地服务器打开，例如 VS Code Live Server 打开 `index.html`，或在项目目录运行 `python3 -m http.server 8000` 后访问 `http://localhost:8000`。
+**Run:** `loadSound()` cannot read audio from `file://`, so open the project through a local server, for example VS Code Live Server on `index.html`, or run `python3 -m http.server 8000` in the project folder and visit `http://localhost:8000`.
 
-**操作：**
+**Controls:**
 
-- 点击 **Play music / Pause music** 播放、暂停约 100 秒的循环音频。页面不会自动播放，也不使用麦克风。点击水面不会触发音乐。
-- 四个季节按钮同时跳转音乐和画面。Auto On 时，播放中按音频的 0／28／57／80 秒切季，暂停时仍按原来的每 600 帧换季，再次播放会进入画面当前季节及其进度。Auto Off 冻结季节，音乐只循环当前季节片段。
+- Press **Play music / Pause music** to play or pause the 100-second looping soundtrack. Music never autoplays and the microphone is not used. Clicking the water does not start the music.
+- The four season buttons jump both the picture and the music to that season. With Auto On, seasons follow the song at 0, 28, 57 and 80 seconds while it plays; while paused, the original 600-frame cycle continues and Play resumes at the current season and its progress. With Auto Off, the season stays fixed and the music repeats that season's passage.
 
-**效果：**
+**What the audio does:**
 
-- **鱼：** 春、夏、秋三季，音乐的 level（整体强弱，用 `p5.Amplitude.getLevel()` 测量）使原有二维鱼的速度在基础值的 1–6 倍、大小在 1–2.2 倍之间变化。冬季鱼恢复原本的速度和大小。
-- **水面暖光（第二次迭代新增）：** 播放时，一块倒影光在池塘宽度 20%–80% 之间缓慢来回移动。音乐越响，附近的水平笔触越宽、越亮、越偏暖黄色，并上下微微晃动；音乐变轻或暂停时恢复原样。只改变队友已有的水面笔触，不新增对象，也不改动用户输入的水波。
+- **Fish:** in spring, summer and autumn, the music's level (overall loudness, measured with `p5.Amplitude.getLevel()`) makes the existing 2D fish swim 1–6 times its base speed and grow 1–2.2 times its base size. In winter the fish returns to its original speed and size.
+- **Moving warm light (new in this iteration):** while music plays, an area of reflected light drifts slowly between 20% and 80% of the pond's width. Louder music makes nearby horizontal brush marks wider, brighter and warmer yellow, and makes them shimmer up and down; quieter music or pausing lets them settle back. Only my teammate's existing water marks change; no new objects are added and the user-input ripples are not altered.
 
-**代码结构（`audio-mechanic.js`）：**
+**Code structure (`audio-mechanic.js`):**
 
-| 函数 | 作用 |
+| Function | Role |
 | --- | --- |
-| `preloadAudioMechanic()` | 加载 `assets/pond-loop.wav`，由 `sketch.js` 唯一的 `preload()` 调用 |
-| `setupAudioMechanic()` | 把 `p5.Amplitude` 接到歌曲，绑定按钮，保存每第四条细笔触的原始值 |
-| `handleAudioPressed()` / `seekAudioTo()` | 播放、暂停、跳转到季节对应的段落 |
-| `keepSongInFrozenSeason()` | Auto Off 时让音乐循环当前季节段落 |
-| `updateFishFromLevel()` | 把 level 0.005–0.18 映射到 0–1，用 `lerp(…, 0.12)` 平滑，再按鱼的原始速度和大小计算 |
-| `updateWaterLightFromLevel()` | 把 level 0.02–0.09 映射为暖光强度；另一个较慢的 `lerp(…, 0.05)` 控制上下晃动，避免抖动 |
+| `preloadAudioMechanic()` | Loads `assets/pond-loop.wav`; called from the single `preload()` in `sketch.js` |
+| `setupAudioMechanic()` | Connects `p5.Amplitude` to the song, wires the button, stores the original values of every fourth fine brush mark |
+| `handleAudioPressed()` / `seekAudioTo()` | Play, pause, and jump to a season's passage |
+| `keepSongInFrozenSeason()` | Loops the current season's passage when Auto is Off |
+| `updateFishFromLevel()` | Maps a level of 0.005–0.18 to 0–1, smooths it with `lerp(…, 0.12)`, then scales the fish's stored speed and size |
+| `updateWaterLightFromLevel()` | Maps a level of 0.02–0.09 to the light's strength; a slower `lerp(…, 0.05)` drives the vertical shimmer so it does not jitter |
 
-所有响应都从保存的原始值计算，用 `map()`、`constrain()`、`lerp()` 限制范围，不会逐帧累加。与队友文件共用的数值（每季 600 帧、冬季编号 3、前 550 个大色块）在文件开头命名并注明来源。季节分界 0／28／57／80 秒是按听感在安静处选的，不是自动检测；`getLevel()` 测的是响度，不是音高或情绪。
+Every response is calculated from stored base values and bounded with `map()`, `constrain()` and `lerp()`, so nothing builds up frame by frame. Values shared with teammates' files (600 frames per season, winter index 3, the first 550 broad colour patches) are named at the top of the file with a note on where they come from. The season starts at 0, 28, 57 and 80 seconds were chosen by ear at quiet gaps, not detected automatically; `getLevel()` measures loudness, not pitch or mood.
 
-**来源与 AI 使用：**
+**Sources and AI assistance:**
 
-- Week 10 Tutorial Part 1 提供 `loadSound`、`p5.Amplitude`、`setInput`、`getLevel`、`isPlaying`、`loop`；`map`、`constrain`、`lerp` 是课程 p5.js 技术。[`pause()`](https://p5js.org/reference/p5.SoundFile/pause/)、[`jump()`](https://p5js.org/reference/p5.SoundFile/jump/)、[`currentTime()`](https://v1.p5js.org/reference/p5.SoundFile/currentTime/) 属 p5.sound 官方补充方法（教程示例用的是 `stop()`）。
-- 音频来自 Robert Schumann《Kinderszenen》Op.15，Anna Vinnitskaya 演奏，SWR Classic / ARD Klassik（[原视频](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)）。使用学生提供的 OBS 录音，截取录音 7.2–107.2 秒，首尾做短淡入淡出。**署名和非商业声明不等于取得录音再发布许可。** 保持仓库私有；公开展示或再发布前应取得许可或换用许可清楚的录音。
-- 音频设计由学生提出。ChatGPT/Codex 协助音频剪辑、播放与映射代码、注释、暖光参数调校和本地检查。Claude 协助把加载移到 `sketch.js`、把更新拆成上表中的辅助函数、给共用数值命名，并撰写本节。代码中的对应位置也有注释标注。
+- Week 10 Tutorial Part 1 covers `loadSound`, `p5.Amplitude`, `setInput`, `getLevel`, `isPlaying` and `loop`; `map`, `constrain` and `lerp` are course p5.js techniques. [`pause()`](https://p5js.org/reference/p5.SoundFile/pause/), [`jump()`](https://p5js.org/reference/p5.SoundFile/jump/) and [`currentTime()`](https://v1.p5js.org/reference/p5.SoundFile/currentTime/) are official p5.sound methods used as supplements (the tutorial's example uses `stop()`).
+- Music: Robert Schumann, *Kinderszenen*, Op. 15, performed by Anna Vinnitskaya, SWR Classic / ARD Klassik ([source video](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)). I trimmed my OBS recording from about 7.2 to 107.2 seconds and added short fades. **Attribution and non-commercial use do not grant redistribution rights.** The repository stays private; public release needs permission or a clearly licensed replacement recording.
+- The audio design is my own. ChatGPT/Codex helped edit the recording, write the playback and mapping code and comments, tune the warm-light response and run local checks. Claude helped move loading into `sketch.js`, split the update into the helper functions above, name the shared values, and write this section. The matching places in the code are marked with comments.
 
 ## 哲明第二周更新（2026-10-23）
 
