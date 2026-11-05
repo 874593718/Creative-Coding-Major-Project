@@ -44,6 +44,8 @@ function draw() {
   drawAudioMechanic(pond);
   drawInputMechanic(pond);
   drawTimeMechanic(pond);
+  // Keep input cracks above the translucent ice; only User Input draws them.
+  drawInputIceCracks(pond);
   // The HTML page displays the title and current season.
 }
 

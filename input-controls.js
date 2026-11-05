@@ -6,14 +6,19 @@
 let inputHand;
 let inputSeason = -1;
 let inputLeaves = [];
-let inputLeafSlot = 0;
+let inputLeafQueue = [];
 let inputSnow = [];
-let inputSnowSlot = 0;
+let inputSnowQueue = [];
+let inputCracks = [];
+let inputCrackCount = 0;
 
 function setupInputMechanic(state) {
   inputHand = {down:false, inside:false, x:0, y:0, startX:0, startY:0,
     moved:false, dragIndex:-1, lastTrailX:0, lastTrailY:0, held:[]};
   state.ripples = [];
+  inputLeaves = []; inputLeafQueue = [];
+  inputSnow = []; inputSnowQueue = [];
+  inputCracks = []; inputCrackCount = 0;
   for (let i=0; i<lilies.length; i++) {
     let lily=lilies[i];
     lily.inputHomeX=lily.baseX; lily.inputHomeY=lily.baseY;
@@ -26,7 +31,7 @@ function setupInputMechanic(state) {
 // Fixed steps use ordinary comparisons and addition, not lerp().
 function inputStep(value, target, step) {
   if (value<target) {value+=step; if(value>target) value=target;}
-  else if(value>target) {value-=step; if(value<target) value=target;}
+  else if (value>target) {value-=step; if(value<target) value=target;}
   return value;
 }
 function inputLimit(value, low, high) {
@@ -48,8 +53,9 @@ function syncInputSeason() {
       particles[i].inputHeld=false; particles[i].inputRelease=0;
       particles[i].inputRecycle=false;
     }
-    inputHand.held=[]; inputLeaves=[]; inputSnow=[];
-    inputLeafSlot=0; inputSnowSlot=0; inputSeason=season;
+    inputHand.held=[]; inputLeaves=[]; inputLeafQueue=[];
+    inputSnow=[]; inputSnowQueue=[]; inputCracks=[]; inputCrackCount=0;
+    inputSeason=season;
   }
 }
 
@@ -86,7 +92,7 @@ function updateInputMechanic(state) {
         inputHand.lastTrailX=inputHand.x; inputHand.lastTrailY=inputHand.y;
       }
     }
-    if(season===2 || season===3) gatherInputParticles(state);
+    if(season===2 || (season===3 && inputHand.moved)) gatherInputParticles(state);
     if(season===3 && inputDistance(inputHand.x,inputHand.y,inputHand.lastTrailX,inputHand.lastTrailY,state)>state.unit*0.025) {
       addInputSnow(inputHand.x,inputHand.y);
       inputHand.lastTrailX=inputHand.x; inputHand.lastTrailY=inputHand.y;
@@ -117,12 +123,51 @@ function updateInputMechanic(state) {
     if(r.age<90) liveRipples.push(r);
   }
   state.ripples=liveRipples;
-  let liveSnow=[];
+
+  let liveLeaves=[], fadingLeaves=0;
+  for(let i=0;i<inputLeaves.length;i++) {
+    let leaf=inputLeaves[i];
+    if(leaf.fading) {
+      fadingLeaves++;
+      leaf.fadeAmount-=0.025;
+      if(leaf.fadeAmount<0) leaf.fadeAmount=0;
+    }
+    if(leaf.fadeAmount>0) liveLeaves.push(leaf);
+  }
+  inputLeaves=liveLeaves;
+  if(inputLeafQueue.length>0 && inputLeaves.length>=40 && fadingLeaves===0) {
+    for(let i=0;i<inputLeaves.length;i++) inputLeaves[i].fading=true;
+  }
+  // Let a few new leaves appear while the older cluster is still fading.
+  if(inputLeaves.length<80 && inputLeafQueue.length>0) {
+    inputLeaves.push(inputLeafQueue[0]);
+    let nextLeaves=[];
+    for(let i=1;i<inputLeafQueue.length;i++) nextLeaves.push(inputLeafQueue[i]);
+    inputLeafQueue=nextLeaves;
+  }
+
+  let liveSnow=[], fadingSnow=0;
   for(let i=0;i<inputSnow.length;i++) {
-    inputSnow[i].age+=1;
-    if(inputSnow[i].age<75) liveSnow.push(inputSnow[i]);
+    let trace=inputSnow[i]; trace.age+=1;
+    if(trace.fading) {
+      fadingSnow++;
+      trace.fadeAmount-=0.025;
+      if(trace.fadeAmount<0) trace.fadeAmount=0;
+    }
+    if(trace.age<120 && trace.fadeAmount>0) liveSnow.push(trace);
   }
   inputSnow=liveSnow;
+  if(inputSnowQueue.length>0 && inputSnow.length>=40 && fadingSnow===0) {
+    for(let i=0;i<inputSnow.length;i++) inputSnow[i].fading=true;
+  }
+  // Snow trails overlap during the short handover instead of replacing in place.
+  if(inputSnow.length<80 && inputSnowQueue.length>0) {
+    inputSnow.push(inputSnowQueue[0]);
+    let nextSnow=[];
+    for(let i=1;i<inputSnowQueue.length;i++) nextSnow.push(inputSnowQueue[i]);
+    inputSnowQueue=nextSnow;
+  }
+
 }
 
 function handleInputPressed(state,x,y) {
@@ -139,7 +184,7 @@ function handleInputPressed(state,x,y) {
       inputHand.grabX=lily.x-x; inputHand.grabY=lily.y-y;
     }
   }
-  if(season===2 || season===3) gatherInputParticles(state);
+  if(season===2) gatherInputParticles(state);
 }
 function handleInputReleased(state,x,y) {
   syncInputSeason();
@@ -151,11 +196,52 @@ function handleInputReleased(state,x,y) {
       let lily=lilies[flower];
       if(lily.inputTarget===30) lily.inputTarget=0;
       else lily.inputTarget=30;
-    } else addInputRipple(state,x,y);
+    } else if(season===3) {
+      let iceIndex=inputFindIceFloe(state,x,y);
+      if(iceIndex>=0) addInputIceCrack(state,x,y,ice[iceIndex],iceIndex);
+      else addInputRipple(state,x,y);
+    } else {
+      addInputRipple(state,x,y);
+    }
   }
   releaseInputParticles(state);
   inputHand.down=false; inputHand.dragIndex=-1;
 }
+
+function inputFindIceFloe(state,x,y) {
+  if(typeof ice==='undefined' || typeof iceAmount==='undefined' || iceAmount<0.1) return -1;
+  let chosen=-1, nearest=state.unit;
+  for(let i=0;i<ice.length;i++) {
+    let floe=ice[i];
+    let dx=(x-floe.x)*state.width, dy=(y-floe.y)*state.height;
+    let rx=floe.size*state.unit*0.9*iceAmount;
+    let ry=floe.size*state.unit*0.35*iceAmount;
+    let distance=dist(0,0,dx,dy);
+    if(dx*dx/(rx*rx)+dy*dy/(ry*ry)<1 && distance<nearest) {
+      chosen=i; nearest=distance;
+    }
+  }
+  return chosen;
+}
+
+function addInputIceCrack(state,x,y,floe,floeIndex) {
+  for(let i=0;i<inputCracks.length;i++) {
+    if(inputCracks[i].floeIndex===floeIndex) return;
+  }
+  let dx=(x-floe.x)*state.width, dy=(y-floe.y)*state.height;
+  let rx=floe.size*state.unit*0.9*iceAmount;
+  let ry=floe.size*state.unit*0.35*iceAmount;
+  let edgePosition=dx*dx/(rx*rx)+dy*dy/(ry*ry);
+  let lengthFactor=inputLimit(0.18+(1-edgePosition)*0.34,0.18,0.52);
+  // Move the mark slightly toward the floe centre so edge clicks stay on the ice.
+  let crackX=floe.x+(x-floe.x)*0.15;
+  let crackY=floe.y+(y-floe.y)*0.15;
+  let crack={x:crackX,y:crackY,size:floe.size*lengthFactor,
+    angle:(inputCrackCount%2)*90,floeIndex:floeIndex};
+  inputCrackCount++;
+  inputCracks.push(crack);
+}
+
 function addInputRipple(state,x,y) {
   // Team schema: relative centre, short-side radius, strength, age in frames.
   if(state.ripples.length>=12) {
@@ -179,9 +265,7 @@ function releaseInputParticles(state) {
   for(let i=0;i<inputHand.held.length;i++) {
     let p=inputHand.held[i];
     if(season===2) {
-      let leaf={x:p.x,y:p.y,angle:i*47};
-      if(inputLeaves.length<40) inputLeaves.push(leaf);
-      else {inputLeaves[inputLeafSlot]=leaf; inputLeafSlot=(inputLeafSlot+1)%40;}
+      addInputLeaf({x:p.x,y:p.y,angle:i*47,fadeAmount:1,fading:false});
       // Ask the time module to recycle it next update, spread across the sky.
       p.inputRecycle=true;
     } else if(season===3) p.inputRelease=35;
@@ -189,6 +273,15 @@ function releaseInputParticles(state) {
   }
   inputHand.held=[];
 }
+
+function addInputLeaf(leaf) {
+  if(inputLeaves.length<40 && inputLeafQueue.length===0) inputLeaves.push(leaf);
+  else {
+    inputLeafQueue.push(leaf);
+    for(let i=0;i<inputLeaves.length;i++) inputLeaves[i].fading=true;
+  }
+}
+
 // Called inside the time module's update: a single writer changes positions.
 function applyInputToParticle(state,p) {
   if(p.inputRecycle) {
@@ -208,9 +301,12 @@ function applyInputToParticle(state,p) {
   }
 }
 function addInputSnow(x,y) {
-  let trace={x:x,y:y,age:0};
-  if(inputSnow.length<40) inputSnow.push(trace);
-  else {inputSnow[inputSnowSlot]=trace; inputSnowSlot=(inputSnowSlot+1)%40;}
+  let trace={x:x,y:y,age:0,fadeAmount:1,fading:false};
+  if(inputSnow.length<40 && inputSnowQueue.length===0) inputSnow.push(trace);
+  else {
+    inputSnowQueue.push(trace);
+    for(let i=0;i<inputSnow.length;i++) inputSnow[i].fading=true;
+  }
 }
 
 // Called only by the Perlin module. Offset values are short-side fractions.
@@ -234,7 +330,6 @@ function inputLilyIsDragged(lily) {
 }
 
 // Three RGB channels only. Contrast changes use ordinary arithmetic.
-// This avoids relying on an unverified fourth alpha argument in our module.
 function inputWaterColour(r,g,b,amount) {
   let water=pondPalette[0];
   return [water[0]+(r-water[0])*amount,
@@ -264,22 +359,60 @@ function drawInputMechanic(state) {
     }
   }
   if(season===2) {
-    for(let i=0;i<inputLeaves.length;i++) {
-      let l=inputLeaves[i]; drawMapleLeaf(l.x*state.width,l.y*state.height,l.angle);
-    }
+    for(let i=0;i<inputLeaves.length;i++) drawInputCollectedLeaf(inputLeaves[i],state);
   }
   if(season===3) {
     noStroke();
     for(let i=0;i<inputSnow.length;i++) {
       let t=inputSnow[i], x=t.x*state.width, y=t.y*state.height;
-      let remaining=1-t.age/75;
+      let remaining=(1-t.age/120)*t.fadeAmount;
       let colour=inputWaterColour(239,247,255,remaining*0.8);
       fill(colour[0],colour[1],colour[2]);
       ellipse(x,y,9*remaining,5*remaining);
-      ellipse(x-6,y+7,3*remaining,3*remaining);
-      ellipse(x+7,y-6,3*remaining,3*remaining);
+      ellipse(x-6*remaining,y+7*remaining,3*remaining,3*remaining);
+      ellipse(x+7*remaining,y-6*remaining,3*remaining,3*remaining);
     }
   }
+  pop();
+}
+
+// Called after drawTimeMechanic() so the crack remains visible above the ice.
+function drawInputIceCracks(state) {
+  push();
+  noFill();
+  for(let i=0;i<inputCracks.length;i++) drawInputIceCrack(inputCracks[i],state);
+  pop();
+}
+
+function drawInputCollectedLeaf(leaf,state) {
+  let size=leaf.fadeAmount;
+  let outer=inputWaterColour(220,105,40,size);
+  let veins=inputWaterColour(126,65,32,size);
+  push(); translate(leaf.x*state.width,leaf.y*state.height); rotate(leaf.angle);
+  noStroke(); fill(outer[0],outer[1],outer[2]);
+  ellipse(0,2*size,10*size,9*size);
+  triangle(-4*size,3*size,0,-12*size,4*size,3*size);
+  triangle(0,5*size,-9*size,-7*size,-5*size,6*size);
+  triangle(0,5*size,9*size,-7*size,5*size,6*size);
+  triangle(0,6*size,-12*size,0,-6*size,7*size);
+  triangle(0,6*size,12*size,0,6*size,7*size);
+  stroke(veins[0],veins[1],veins[2]); strokeWeight(1);
+  line(0,-7*size,0,11*size); line(0,3*size,-7*size,0); line(0,3*size,7*size,0);
+  pop();
+}
+
+function drawInputIceCrack(crack,state) {
+  let size=crack.size*state.unit*iceAmount;
+  let colour=inputWaterColour(18,32,42,1);
+  push(); translate(crack.x*state.width,crack.y*state.height); rotate(crack.angle);
+  noFill(); stroke(colour[0],colour[1],colour[2]); strokeWeight(1.8);
+  // A short fracture with two branches, kept well inside the floe's oval.
+  line(-size*0.46,size*0.04,-size*0.20,-size*0.03);
+  line(-size*0.20,-size*0.03,size*0.03,size*0.09);
+  line(size*0.03,size*0.09,size*0.22,-size*0.13);
+  line(size*0.22,-size*0.13,size*0.48,-size*0.08);
+  line(-size*0.20,-size*0.03,-size*0.34,-size*0.22);
+  line(size*0.22,-size*0.13,size*0.36,-size*0.30);
   pop();
 }
 
@@ -310,6 +443,8 @@ function handleInputKey(state,pressedKey) {
       particles[i].inputHeld=false; particles[i].inputRelease=0;
       particles[i].inputRecycle=false;
     }
-    inputHand.held=[]; state.ripples=[]; inputLeaves=[]; inputSnow=[];
+    inputHand.held=[]; state.ripples=[];
+    inputLeaves=[]; inputLeafQueue=[]; inputSnow=[]; inputSnowQueue=[];
+    inputCracks=[]; inputCrackCount=0;
   }
 }
