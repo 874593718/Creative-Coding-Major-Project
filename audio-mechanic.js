@@ -30,8 +30,9 @@ let audioLightDirection = 1;
 let audioLightSpeed = 0.00035;
 let audioLightRadius = 0.26;
 
-// 2. LOAD — p5 calls this before setup(); output is the sound file audioSong.
-function preload() {
+// 2. LOAD — called from the single preload() in sketch.js, so p5 finishes
+// loading the sound file before setup(). Output: the sound file audioSong.
+function preloadAudioMechanic() {
   audioSong = loadSound('assets/pond-loop.wav');
 }
 
@@ -57,12 +58,11 @@ function setupAudioMechanic(state) {
   }
 }
 
-// 4. PLAY / PAUSE — the original sketch also calls this on pond clicks.
-// That existing call passes state; ignore it so only the button plays music.
+// 4. PLAY / PAUSE — only the Play music button calls this; pond clicks
+// belong to the user-input mechanic and never start the music.
 // Official p5.sound pause() preserves playback position, unlike stop():
 // https://p5js.org/reference/p5.SoundFile/pause/
-function handleAudioPressed(state) {
-  if (state) return;
+function handleAudioPressed() {
   if (audioSong.isPlaying()) {
     audioSong.pause();
     audioButton.innerHTML = 'Play music';

@@ -8,6 +8,11 @@ let pond = {
   ripples: []
 };
 
+// p5 runs this before setup(). Modules that load files add a call here.
+function preload() {
+  preloadAudioMechanic();
+}
+
 // Create the canvas and initialise each module once.
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -55,11 +60,10 @@ function windowResized() {
   updatePondSize();
 }
 
-// Forward clicks to the existing input and audio modules.
+// Forward canvas clicks to the input module. Music has its own HTML button.
 function mousePressed() {
   if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     handleInputPressed(pond, mouseX / width, mouseY / height);
-    handleAudioPressed(pond);
   }
 }
 
