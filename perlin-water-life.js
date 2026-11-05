@@ -22,7 +22,8 @@ function setupPondFish() {
   pondFish = {x:random(0.2,0.8), y:random(0.25,0.75),
     heading:random(0,360), seed:random(0,1000), time:0,
     size:random(0.045,0.065), speed:random(0.0007,0.0011),
-    red:random(190,225), green:random(130,165), blue:random(85,115),
+    // Pick a new body colour once; drawing reuses it instead of flickering.
+    red:random(100,235), green:random(95,210), blue:random(90,210),
     audioLevel:0, disturbance:0, responseFrames:0, responseDuration:1,
     responseTurn:0, responseBoost:0, responseSeed:0};
 }
@@ -86,21 +87,55 @@ function updatePondFish(state) {
   fish.y=constrain(fish.y+sin(fish.heading)*speed*state.unit/state.height,0.12,0.88);
 }
 
-// Draw the body, tail, highlight and eye around the fish's own centre.
+// Build the fish from simple shapes around its centre. The saved colour and
+// noise seed stay the same, while the tail moves as the fish swims.
 function drawPondFish(state) {
   const fish=pondFish;
   const size=fish.size*state.unit;
+  const tail=sin(state.frame*7)*size*0.10;
   push();
   translate(fish.x*state.width,fish.y*state.height);
   rotate(fish.heading);
   noStroke();
-  fill(fish.red,fish.green,fish.blue,175);
+
+  // Two rounded lobes form the tail. Both follow the same gentle swing.
+  fill(fish.red,fish.green,fish.blue,135);
+  ellipse(-size*0.62,-size*0.11+tail,size*0.42,size*0.20);
+  ellipse(-size*0.62,size*0.11+tail,size*0.42,size*0.20);
+  triangle(-size*0.25,0,-size*0.60,-size*0.17+tail,-size*0.60,size*0.17+tail);
+
+  // Fins sit behind the body; lighter edges help them stand out in the water.
+  fill(fish.red,fish.green,fish.blue,145);
+  ellipse(-size*0.08,-size*0.21,size*0.32,size*0.16);
+  ellipse(-size*0.08,size*0.21,size*0.32,size*0.16);
+  fill(245,230,200,90);
+  ellipse(-size*0.08,-size*0.23,size*0.22,size*0.05);
+  ellipse(-size*0.08,size*0.23,size*0.22,size*0.05);
+
+  // Layer a belly and a softer highlight over the main body.
+  fill(fish.red,fish.green,fish.blue,190);
   ellipse(0,0,size,size*0.38);
-  const tail=sin(state.frame*7)*size*0.10;
-  triangle(-size*0.38,0,-size*0.78,-size*0.25+tail,-size*0.78,size*0.25+tail);
-  fill(235,205,160,120);
-  ellipse(size*0.05,-size*0.05,size*0.55,size*0.12);
-  fill(35,55,60);
-  circle(size*0.31,-size*0.06,size*0.045);
+  fill(245,225,195,80);
+  ellipse(size*0.05,size*0.07,size*0.70,size*0.17);
+  fill(255,245,225,75);
+  ellipse(size*0.02,-size*0.09,size*0.62,size*0.09);
+
+  // Fixed noise samples give each fish a slightly different scale pattern.
+  // No random values are chosen here, so the markings do not flash each frame.
+  for (let i=0;i<5;i++) {
+    fill(255,240,210,65+noise(fish.seed+i*0.7)*85);
+    ellipse(-size*0.29+i*size*0.12,-size*0.03,size*0.055,size*0.07);
+    ellipse(-size*0.24+i*size*0.12,size*0.05,size*0.045,size*0.055);
+  }
+
+  // A small gill, eye and mouth make the head easier to recognise.
+  fill(fish.red*0.65,fish.green*0.65,fish.blue*0.65,150);
+  ellipse(size*0.19,0,size*0.025,size*0.18);
+  fill(30,45,45,220);
+  circle(size*0.33,-size*0.055,size*0.055);
+  fill(255,245,220,220);
+  circle(size*0.34,-size*0.065,size*0.018);
+  fill(fish.red*0.55,fish.green*0.55,fish.blue*0.55,180);
+  ellipse(size*0.48,size*0.01,size*0.035,size*0.025);
   pop();
 }

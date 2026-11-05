@@ -16,9 +16,7 @@ let audioQuietLevel = 0.005;
 let audioStrongLevel = 0.18;
 let audioSmoothing = 0.12;
 let audioMaxSpeed = 6;
-let audioMaxSize = 2.2;
 let audioFishBaseSpeed;
-let audioFishBaseSize;
 let audioSeekFrames = 0;
 // After jump(), currentTime() can report the old position for a few frames.
 let audioSeekGuardFrames = 12;
@@ -103,7 +101,7 @@ function seekAudioTo(seconds) {
 }
 
 // 6. ANALYSE AND MAP — input: team state and current song level. Output song
-// time/playing state, fish speed/size, and properties of existing water marks.
+// time/playing state, fish speed, and properties of existing water marks.
 // Each step lives in its own helper below so the order is easy to follow.
 // Official p5.sound currentTime():
 // https://v1.p5js.org/reference/p5.SoundFile/currentTime/
@@ -132,14 +130,13 @@ function keepSongInFrozenSeason(state) {
   }
 }
 
-// 6b. FISH — louder music makes the fish faster and larger.
+// 6b. FISH — louder music makes the fish swim faster.
 // Capture its random base values once; never multiply last frame's values.
 // Perlin direction, drawing and ripple response remain in the teammate file.
 function updateFishFromLevel() {
   if (!pondFish) return;
   if (audioFishBaseSpeed === undefined) {
     audioFishBaseSpeed = pondFish.speed;
-    audioFishBaseSize = pondFish.size;
   }
   let target = map(audioLevel, audioQuietLevel, audioStrongLevel, 0, 1);
   target = constrain(target, 0, 1);
@@ -149,14 +146,12 @@ function updateFishFromLevel() {
   // The teammate's audioLevel adds a separate 0–50% speed boost.
   // Set it to zero so this AI-assisted amplitude mapping alone gives
   // a clear 1–6x range; the student chose the fish and response limits.
-  // In winter, restore the original speed and size immediately.
+  // In winter, restore the original speed immediately.
   pondFish.audioLevel = 0;
   if (season === audioWinterSeason) {
     pondFish.speed = audioFishBaseSpeed;
-    pondFish.size = audioFishBaseSize;
   } else {
     pondFish.speed = audioFishBaseSpeed * map(audioResponse, 0, 1, 1, audioMaxSpeed);
-    pondFish.size = audioFishBaseSize * map(audioResponse, 0, 1, 1, audioMaxSize);
   }
 }
 

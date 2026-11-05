@@ -13,7 +13,7 @@ This is an IDEA9103 student project, shared only in our private team repository 
 
 **What the audio does:**
 
-- **Fish:** in spring, summer and autumn, the music's level (overall loudness, measured with `p5.Amplitude.getLevel()`) makes the existing 2D fish swim 1–6 times its base speed and grow 1–2.2 times its base size. In winter the fish returns to its original speed and size.
+- **Fish:** in spring, summer and autumn, the music's level (overall loudness, measured with `p5.Amplitude.getLevel()`) makes the existing 2D fish swim 1–6 times its base speed. Its size stays constant, and in winter the fish returns to its original speed.
 - **Moving warm light (new in this iteration):** while music plays, an area of reflected light drifts slowly between 20% and 80% of the pond's width. Louder music makes nearby horizontal brush marks wider, brighter and warmer yellow, and makes them shimmer up and down; quieter music or pausing lets them settle back. Only my teammate's existing water marks change; no new objects are added and the user-input ripples are not altered.
 
 **Code structure (`audio-mechanic.js`):**
@@ -24,7 +24,7 @@ This is an IDEA9103 student project, shared only in our private team repository 
 | `setupAudioMechanic()` | Connects `p5.Amplitude` to the song, wires the button, stores the original values of every fourth fine brush mark |
 | `handleAudioPressed()` / `seekAudioTo()` | Play, pause, and jump to a season's passage |
 | `keepSongInFrozenSeason()` | Loops the current season's passage when Auto is Off |
-| `updateFishFromLevel()` | Maps a level of 0.005–0.18 to 0–1, smooths it with `lerp(…, 0.12)`, then scales the fish's stored speed and size |
+| `updateFishFromLevel()` | Maps a level of 0.005–0.18 to 0–1, smooths it with `lerp(…, 0.12)`, then scales the fish's stored speed |
 | `updateWaterLightFromLevel()` | Maps a level of 0.02–0.09 to the light's strength; a slower `lerp(…, 0.05)` drives the vertical shimmer so it does not jitter |
 
 Every response is calculated from stored base values and bounded with `map()`, `constrain()` and `lerp()`, so nothing builds up frame by frame. Values shared with teammates' files (600 frames per season, winter index 3, the first 550 broad colour patches) are named at the top of the file with a note on where they come from. The season starts at 0, 28, 57 and 80 seconds were chosen by ear at quiet gaps, not detected automatically; `getLevel()` measures loudness, not pitch or mood.
@@ -35,20 +35,38 @@ Every response is calculated from stored base values and bounded with `map()`, `
 - Music: Robert Schumann, *Kinderszenen*, Op. 15, performed by Anna Vinnitskaya, SWR Classic / ARD Klassik ([source video](https://www.ardmediathek.de/video/ard-klassik/schumann-kinderszenen-vinnitskaya/ard/Y3JpZDovL3N3ci5kZS9hZXgvbzE0ODU5MzY)). I trimmed my OBS recording from about 7.2 to 107.2 seconds and added short fades. **Attribution and non-commercial use do not grant redistribution rights.** The repository stays private; public release needs permission or a clearly licensed replacement recording.
 - The audio design is my own. ChatGPT/Codex helped edit the recording, write the playback and mapping code and comments, tune the warm-light response and run local checks. Claude helped move loading into `sketch.js`, split the update into the helper functions above, name the shared values, and write this section. The matching places in the code are marked with comments.
 
-## 哲明第二周更新（2026-10-23）
+## Perlin noise and randomness — Zheming Yu
 
-鱼的水波响应已接入：按波纹的椭圆比例检查波前是否靠近鱼，每个水波只触发一次。random 决定转向强度、35–60 帧的持续时间和短暂加速；noise 连续调节转弯速率，响应随剩余时间衰减，结束后恢复基础游速。转向侧根据鱼朝向和扰动来源计算，正好同轴时随机选择。使用 dist、abs、sin/cos、random、noise、map、max、普通对象与循环，均在第 3/4、7、8、11 周范围内。未新增超纲 API。
+I developed the Perlin noise and randomness mechanic in `perlin-lilies.js` and `perlin-water-life.js`. Inspired by the layered colours and reflections in Monet's *Water Lilies*, I used simple translucent shapes to suggest a pond that is calm but never completely still. The exact artwork reference should be confirmed by the team.
 
-本轮定向检查通过：波前到达触发、同一水波不重复触发、响应结束恢复、远处未到达的水波不触发；原四季输入集成检查也通过。`pondFish.disturbance` 现在由鱼响应函数维护，音乐接口仍为 0，尚未接入。
+### Development updates
 
-新增 `perlin-water-life.js`，仍属于哲明的 Perlin noise + randomness 机制。
-点击空白水面或夏季拖动产生水波时，初始半径随机为短边的 0.008–0.024，基础速度随机为每帧 0.0025–0.0055；noise 连续调整速度倍率到 0.65–1.35。绘制与荷叶响应仍读取同一个 radius，避免视觉与响应脱节。组员原有 90 帧寿命和最多 12 个水波的限制保留。
+- **15 October — first prototype:** Created the initial water and lily scene. Random values set the lily positions, sizes and other details; noise gives each lily a slow, bounded drift. Water is made from saved translucent ellipse marks, with nearby colours related by two-dimensional noise. Normalised positions help the layout adapt to different window sizes.
+- **23 October — interaction and fish:** Integrated the user-input mechanic with the lily movement. Added a fish with a random starting position, direction, size, colour and noise seed. Noise changes its heading smoothly; `sin()` and `cos()` turn the heading into movement. Each new ripple receives a random starting radius and expansion speed, and noise varies that speed. When a wavefront reaches the fish, it triggers one temporary turn and speed boost that gradually fade.
+- **30 October — organisation and colour:** Simplified parts of the lily and fish code and added comments. The pond now selects one of four base palettes, then varies each RGB channel by up to 10 once at setup. Saving these colours and the water marks avoids changing them on every frame.
+- **5 November — fish appearance:** Reworked the fish drawing with two tail lobes, fins, a shaded body, scale markings, a gill, an eye and a mouth. Its RGB body colour is chosen with `random()` at setup; fixed samples of `noise()` vary the scale brightness without flickering. The existing noise-driven swimming and ripple response are retained. The audio mechanic can change the fish's speed, but no longer changes its size.
 
-新增一条水下鱼：random 设置出生位置、大小、速度、颜色和噪声起点；noise 连续改变方向，sin/cos 将方向转为移动坐标，并在边缘向内转向。鱼在荷叶下方绘制，缩放使用比例坐标。`pondFish.audioLevel` 为未来 0–1 音频输入接口，目前保持 0；`pondFish.disturbance` 已连接水波避让并随时间恢复为 0。R 仍仅重置组员的用户输入状态，不重新随机鱼。
+### How my mechanic works
 
-课堂依据：第 3/4 周对象、函数、条件、循环；第 6 周 ellipse/triangle/circle/fill/constrain；第 8 周 random/noise/map/sin/cos/translate/rotate 与比例坐标。没有新库、向量、物理引擎或范围外 API。AI 辅助已在新脚本标注。
+- **Lily layout:** `setupPerlinMechanic()` aims for 58–68 pads. It samples random positions, uses two-dimensional noise to vary the probability of placement, and checks distances to reduce overlap. A second pass tries to fill large gaps; the final count can be lower if no clear position is found.
+- **Water:** `setupWaterMarks()` stores 550 broad patches and two layers of 1,600 smaller marks. `noise()`, a reflection band and `lerp()` mix the colours. `drawPondWater()` draws the stored marks each frame; the audio mechanic also adjusts some existing marks during playback.
+- **Lily movement and drawing:** `updatePerlinMechanic()` maps slowly changing noise to a small offset around each pad's saved position, then combines it with the input mechanic's offset. `drawPerlinMechanic()` draws the pads; `drawLilyFlower()` draws the petals used by the input mechanic.
+- **Fish and ripples:** `setupPondFish()` saves the fish's random starting properties. `updatePondFish()` uses noise for direction and steers near the edges. `respondFishToRipples()` compares the fish's position with each flattened wavefront and marks each ripple after it triggers a response. `drawPondFish()` uses ellipses, triangles and circles to draw the fish.
+- **Team integration:** The input mechanic owns ripple creation and cleanup. The time mechanic supplies seasonal leaf and flower values. The audio mechanic adjusts the fish's speed; its drawing, direction and ripple response stay in my file. `sketch.js` calls the modules and controls their drawing order.
 
-验证：运行后观察鱼游动；连续点击不同水面位置比较波纹初始大小与扩散速度；波纹应持续向外并消失，荷叶仍响应。四季、B/R、拖动和粒子交互需保留。已有浏览器集成检查通过，详细视觉效果仍可按团队演示需要调参。
+### How to experience it
+
+Open the project through the local server described above. Refresh the page to generate a new palette, lily layout and fish colour. Watch the lilies drift and the fish swim; click an empty part of the water to create a ripple and watch for the fish's response when the wavefront reaches it. In summer, dragging a lily can also create ripples. Use **Play music** to hear the audio mechanic affect the fish's speed. The fish keeps its generated size while the music plays.
+
+### Techniques, sources and AI acknowledgement
+
+My implementation combines p5.js `random()`, one- and two-dimensional `noise()`, `map()`, `dist()`, `constrain()`, `lerp()`, `sin()`, `cos()`, basic drawing shapes and transforms. Week 8 tutorial examples W08-T-C01 and W08-T-C02 informed my use of random values, noise and arrays; I adapted those concepts to the pond rather than copying a complete example. See [the course-scope notes](docs/course-scope.md) and [the water and randomness notes](docs/painterly-water.md). The team should add the specific artwork citation once confirmed.
+
+ChatGPT/Codex assisted with the initial project structure, Perlin and randomness prototype, later code organisation, palette and fish drawing changes, comments, documentation and local browser checks. The generated code saves random starting values, samples noise for continuous movement and colour variation, and combines the results with the team's existing interaction and audio interfaces. AI assistance is also marked in my source files; I am responsible for reviewing and explaining the implementation.
+
+### Checks
+
+Local checks covered loading the pond, fish movement, a ripple triggering the fish, audio playback and the winter button. A targeted check also confirmed that music can change fish speed while the generated fish size remains unchanged. These checks do not cover every interaction or screen size.
 
 ## 本地整合更新（2026-10-23）
 
