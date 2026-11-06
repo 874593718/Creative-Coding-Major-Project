@@ -1,4 +1,5 @@
-// Time mechanic. AI-assisted implementation.
+// Time-based mechanic - Jingyi Shi.
+// ChatGPT helped develop and revise the seasonal animations and integration.
 // 0 spring, 1 summer, 2 autumn, 3 winter.
 let season = 0;
 let autoChange = true;
@@ -8,20 +9,37 @@ let seasonSeekFrames = 0;
 let seasonStartTimes = [0, 28, 57, 80, 100];
 let seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
 let seasonButtons = ['spring', 'summer', 'autumn', 'winter'];
-let particles = [], ice = [], mist = [], lights = [], visitors = [];
-let leafScale = 0.45, flowerScale = 0;
+let particles = [];
+let ice = [];
+let mist = [];
+let lights = [];
+let visitors = [];
+let leafScale = 0.45;
+let flowerScale = 0;
 let leafR = 145, leafG = 174, leafB = 100;
 let iceAmount = 0, snowAmount = 0, snowCount = 18, mistAmount = 0;
 let winterFrames = 0, lastSeason = -1, timeFrame = 0;
-// Leaf size, flower size and RGB colour for each season.
-let seasonLooks = [
-  [0.65, 0.3, 145, 174, 100],
-  [1.15, 1.25, 85, 140, 72],
-  [0.85, 0, 166, 128, 55],
-  [0.22, 0, 100, 89, 65]
+// Autumn petals come from the lilies, separate from the input-controlled leaves.
+let lilyPetals = [], autumnFrames = 0;
+// Save the target size and leaf colour for each season.
+let seasonSettings = [
+  {leaf:0.65, flower:0.3, r:145, g:174, b:100},
+  {leaf:1.15, flower:1.25, r:85, g:140, b:72},
+  {leaf:0.85, flower:0, r:166, g:128, b:55},
+  {leaf:0.22, flower:0, r:100, g:89, b:65}
 ];
+let seasonFilters = [[220,200,145,18], [30,65,105,35], [215,125,45,42], [150,175,210,48]];
 
+// Create the starting positions once, rather than choosing them every frame.
 function setupTimeMechanic(state) {
+  lilyPetals = []; autumnFrames = 0;
+  for (let i = 0; i < lilies.length && lilyPetals.length < 24; i++) {
+    if (lilies[i].flower) {
+      for (let j = 0; j < 3; j++) {
+        lilyPetals.push({leaf:i, x:0, y:0, age:0, angle:j*120+i*37});
+      }
+    }
+  }
   particles = []; ice = []; mist = []; lights = []; visitors = [];
   iceAmount = 0; snowAmount = 0; mistAmount = 0;
   winterFrames = 0; lastSeason = -1; timeFrame = 0;
@@ -78,21 +96,41 @@ function updateTimeMechanic(state) {
   }
 
   // Button changes are immediate; automatic changes ease gradually.
-  let look = seasonLooks[season], easing = 0.035;
+  let target = seasonSettings[season];
+  let easing = 0.035;
   if (seasonSnap) easing = 1;
-  leafScale = lerp(leafScale, look[0], easing);
-  flowerScale = lerp(flowerScale, look[1], easing);
-  leafR = lerp(leafR, look[2], easing);
-  leafG = lerp(leafG, look[3], easing);
-  leafB = lerp(leafB, look[4], easing);
+  leafScale = lerp(leafScale, target.leaf, easing);
+  flowerScale = lerp(flowerScale, target.flower, easing);
+  leafR = lerp(leafR, target.r, easing);
+  leafG = lerp(leafG, target.g, easing);
+  leafB = lerp(leafB, target.b, easing);
   seasonSnap = false;
 
   // Winter starts with visible ice and snow.
   if (season !== lastSeason) {
+    autumnFrames = 0;
     winterFrames = 0;
     if (season === 3) { iceAmount = 0.55; snowAmount = 0.18; snowCount = 35; }
   }
   lastSeason = season;
+  // Stagger small groups through autumn so the falling petals are not missed.
+  if (season === 2) {
+    autumnFrames++;
+    for (let i = 0; i < lilyPetals.length; i++) {
+      let p = lilyPetals[i];
+      p.age = (autumnFrames - i * 6) % 420;
+      if (p.age === 1) {
+        let leaf = lilies[p.leaf];
+        p.x = leaf.x; p.y = leaf.y;
+      }
+      if (p.age > 0 && p.age < 360) {
+        let speed = 0.12;
+        if (p.age < 90) speed = 1.1;
+        p.x += cos(p.angle) * speed * state.unit / 780 / state.width;
+        p.y += (0.20 + sin(p.angle) * speed) * state.unit / 780 / state.height;
+      }
+    }
+  }
   let targetIce = 0, targetSnow = 0, flakes = 18;
   if (season === 3) {
     winterFrames++;
@@ -165,12 +203,29 @@ function updateTimeMechanic(state) {
   }
 }
 
+// Keep the shared season buttons connected to the music.
 function chooseSeason(next) {
   seekAudioTo(seasonStartTimes[next]);
   season = next; seasonFrames = 0; seasonSnap = true; seasonSeekFrames = 12;
+  autumnFrames = 0;
+  // Restart the time effects even when replaying the same season.
+  winterFrames = 0; lastSeason = -1; timeFrame = 0;
+  for (let i = 0; i < visitors.length; i++) {
+    let bug = visitors[i];
+    if (bug.season === season) {
+      let leaf = lilies[bug.leaf];
+      bug.timer = 0;
+      if (season === 1) bug.timer = (i % 4) * 45;
+      bug.x = leaf.x; bug.y = leaf.y;
+      bug.startX = leaf.x; bug.startY = leaf.y;
+    }
+  }
   updateLabels();
 }
-function toggleAuto() { autoChange = !autoChange; updateLabels(); }
+function toggleAuto() {
+  autoChange = !autoChange;
+  updateLabels();
+}
 function updateLabels() {
   document.getElementById('status').textContent = seasonNames[season];
   for (let i = 0; i < 4; i++) document.getElementById(seasonButtons[i]).setAttribute('aria-pressed', i === season);
@@ -179,11 +234,11 @@ function updateLabels() {
   document.getElementById('auto').textContent = label;
 }
 
+// Draw the pond effects first, followed by insects and falling objects.
 function drawTimeMechanic(state) {
   push();
   noStroke();
-  let filters = [[220,200,145,18], [30,65,105,35], [215,125,45,42], [150,175,210,48]];
-  let colour = filters[season];
+  let colour = seasonFilters[season];
   fill(colour[0], colour[1], colour[2], colour[3]);
   rect(0, 0, state.width, state.height);
 
@@ -225,6 +280,27 @@ function drawTimeMechanic(state) {
       noFill(); stroke(215,236,247,140 * (1-progress)); strokeWeight(1);
       ellipse(x,y,size,size*0.45);
       if (progress < 0.18) { line(x-2,y-2,x-4,y-6); line(x+2,y-2,x+4,y-6); }
+    }
+  }
+
+  // Pink lily petals flatten as they settle, then gradually disappear.
+  if (season === 2) {
+    noStroke();
+    for (let i = 0; i < lilyPetals.length; i++) {
+      let p = lilyPetals[i];
+      if (p.age > 0 && p.age < 360) {
+        let opacity = 245;
+        if (p.age > 240) opacity = map(p.age,240,360,245,0);
+        let petalHeight = map(constrain(p.age,0,90),0,90,9,5);
+        push();
+        translate(p.x * state.width,p.y * state.height);
+        rotate(p.angle);
+        fill(255,151,188,opacity);
+        ellipse(0,0,16,petalHeight);
+        fill(255,224,232,opacity * 0.7);
+        ellipse(-2,-0.5,9,petalHeight * 0.5);
+        pop();
+      }
     }
   }
 
